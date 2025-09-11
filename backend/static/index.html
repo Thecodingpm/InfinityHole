@@ -778,6 +778,30 @@
         // Show URL input
         function showUrlInput() {
             document.getElementById('urlInput').style.display = 'flex';
+            
+            // Add iOS indicator if detected
+            if (isIOS()) {
+                const urlInput = document.getElementById('urlInput');
+                let iosIndicator = document.getElementById('iosIndicator');
+                if (!iosIndicator) {
+                    iosIndicator = document.createElement('div');
+                    iosIndicator.id = 'iosIndicator';
+                    iosIndicator.style.cssText = `
+                        position: absolute;
+                        top: 10px;
+                        right: 10px;
+                        background: rgba(255, 215, 0, 0.2);
+                        border: 1px solid #ffd700;
+                        border-radius: 15px;
+                        padding: 5px 10px;
+                        font-size: 12px;
+                        color: #ffd700;
+                    `;
+                    iosIndicator.textContent = '📱 iOS Mode';
+                    urlInput.style.position = 'relative';
+                    urlInput.appendChild(iosIndicator);
+                }
+            }
         }
         
         // Hide URL input
@@ -925,6 +949,33 @@
                 downloadHistory = [];
                 localStorage.setItem('downloadHistory', JSON.stringify(downloadHistory));
                 loadDownloadHistory();
+            }
+        }
+        
+        // iOS-specific download handler
+        function handleIOSDownload(url, filename) {
+            if (isIOS()) {
+                // Create a temporary link element
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.target = '_blank';
+                
+                // For iOS, we need to open in new tab and let user save manually
+                window.open(url, '_blank');
+                
+                // Show instructions
+                setTimeout(() => {
+                    alert('📱 iOS Instructions:\n\n1. The video will open in a new tab\n2. Tap and hold on the video\n3. Select "Save to Photos" from the menu\n\nYour video will be saved to your Photos app!');
+                }, 1000);
+            } else {
+                // For other devices, use normal download
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
         }
         
@@ -1111,6 +1162,16 @@
             selectedFormat = { formatId, outputFormat };
         }
         
+        // Check if device is iOS
+        function isIOS() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent);
+        }
+        
+        // Check if device is mobile
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+        
         // Download selected format
         async function downloadSelectedFormat() {
             if (!selectedFormat || !currentVideoInfo) {
@@ -1155,17 +1216,53 @@
                 
                 updateProgress(100, 'Complete!', 'Download finished successfully', '0 MB/s');
                 
-                // Show success
+                // Show success with mobile-optimized download
                 setTimeout(() => {
                     hideProgress();
+                    const isVideo = selectedFormat.outputFormat === 'video';
+                    const isIOSDevice = isIOS();
+                    const isMobileDevice = isMobile();
+                    
+                    let downloadButton = '';
+                    let additionalInfo = '';
+                    
+                    if (isIOSDevice && isVideo) {
+                        // For iOS video downloads, use a special approach
+                        downloadButton = `
+                            <button class="download-btn" onclick="handleIOSDownload('${downloadInfo.download_url}', '${currentVideoInfo.title}.webm')" style="border: none; cursor: pointer;">
+                                📱 Save to Photos
+                            </button>
+                            <p style="font-size: 12px; opacity: 0.7; margin-top: 10px;">
+                                Tap the button above to open video, then tap and hold to save to Photos
+                            </p>
+                        `;
+                        additionalInfo = '<p style="color: #ffd700;">📱 iOS: Video will be saved to your Photos app</p>';
+                    } else if (isMobileDevice) {
+                        // For other mobile devices
+                        downloadButton = `
+                            <a href="${downloadInfo.download_url}" class="download-btn" download>
+                                📥 Download File
+                            </a>
+                            <p style="font-size: 12px; opacity: 0.7; margin-top: 10px;">
+                                File will be saved to your Downloads folder
+                            </p>
+                        `;
+                    } else {
+                        // For desktop
+                        downloadButton = `
+                            <a href="${downloadInfo.download_url}" class="download-btn" download>
+                                📥 Download File
+                            </a>
+                        `;
+                    }
+                    
                     const content = `
                         <h3>✅ Download Complete!</h3>
                         <p><strong>${currentVideoInfo.title}</strong></p>
                         <p>Size: ${(downloadInfo.filesize / (1024 * 1024)).toFixed(1)} MB</p>
                         <p>Format: ${selectedFormat.outputFormat.toUpperCase()}</p>
-                        <a href="${downloadInfo.download_url}" class="download-btn" download>
-                            📥 Download File
-                        </a>
+                        ${additionalInfo}
+                        ${downloadButton}
                     `;
                     showResult(content, true);
                 }, 1500);

@@ -953,80 +953,158 @@
         }
         
         // iOS-specific download handler
-        function handleIOSDownload(url, filename) {
+        function handleIOSDownload(url, filename, isAudio = false) {
             if (isIOS()) {
-                // Create a video element to trigger proper iOS video handling
-                const video = document.createElement('video');
-                video.src = url;
-                video.controls = true;
-                video.playsInline = true; // Important for iOS
-                video.preload = 'metadata';
-                video.style.cssText = `
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    width: 90%;
-                    max-width: 500px;
-                    height: auto;
-                    z-index: 10000;
-                    background: black;
-                    border-radius: 10px;
-                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-                `;
-                
-                // Add iOS-specific attributes
-                video.setAttribute('webkit-playsinline', 'true');
-                video.setAttribute('playsinline', 'true');
-                
-                // Add close button
-                const closeBtn = document.createElement('button');
-                closeBtn.innerHTML = '✕';
-                closeBtn.style.cssText = `
-                    position: absolute;
-                    top: -10px;
-                    right: -10px;
-                    background: #ff4444;
-                    color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 30px;
-                    height: 30px;
-                    font-size: 16px;
-                    cursor: pointer;
-                    z-index: 10001;
-                `;
-                closeBtn.onclick = () => {
-                    document.body.removeChild(video);
-                    document.body.removeChild(closeBtn);
-                };
-                
-                // Add overlay
-                const overlay = document.createElement('div');
-                overlay.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.8);
-                    z-index: 9999;
-                `;
-                overlay.onclick = () => {
-                    document.body.removeChild(overlay);
-                    document.body.removeChild(video);
-                    document.body.removeChild(closeBtn);
-                };
-                
-                // Add to page
-                document.body.appendChild(overlay);
-                document.body.appendChild(video);
-                document.body.appendChild(closeBtn);
-                
-                // Show instructions
-                setTimeout(() => {
-                    alert('📱 iOS Instructions:\n\n1. The video is now playing above\n2. Tap and hold on the video\n3. Select "Save to Photos" from the menu\n4. Tap the ✕ to close when done\n\nYour video will be saved to your Photos app!');
-                }, 500);
+                if (isAudio) {
+                    // For audio files, create an audio player
+                    const audio = document.createElement('audio');
+                    audio.src = url;
+                    audio.controls = true;
+                    audio.preload = 'metadata';
+                    audio.style.cssText = `
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 90%;
+                        max-width: 400px;
+                        height: 60px;
+                        z-index: 10000;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        border-radius: 15px;
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+                        padding: 20px;
+                    `;
+                    
+                    // Add iOS-specific attributes for better audio handling
+                    audio.setAttribute('webkit-playsinline', 'true');
+                    audio.setAttribute('playsinline', 'true');
+                    
+                    // Add close button
+                    const closeBtn = document.createElement('button');
+                    closeBtn.innerHTML = '✕';
+                    closeBtn.style.cssText = `
+                        position: absolute;
+                        top: -10px;
+                        right: -10px;
+                        background: #ff4444;
+                        color: white;
+                        border: none;
+                        border-radius: 50%;
+                        width: 30px;
+                        height: 30px;
+                        font-size: 16px;
+                        cursor: pointer;
+                        z-index: 10001;
+                    `;
+                    closeBtn.onclick = () => {
+                        document.body.removeChild(audio);
+                        document.body.removeChild(closeBtn);
+                        document.body.removeChild(overlay);
+                    };
+                    
+                    // Add overlay
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0, 0, 0, 0.8);
+                        z-index: 9999;
+                    `;
+                    overlay.onclick = () => {
+                        document.body.removeChild(overlay);
+                        document.body.removeChild(audio);
+                        document.body.removeChild(closeBtn);
+                    };
+                    
+                    // Add to page
+                    document.body.appendChild(overlay);
+                    document.body.appendChild(audio);
+                    document.body.appendChild(closeBtn);
+                    
+                    // Show instructions for audio
+                    setTimeout(() => {
+                        alert('🎵 iOS Audio Instructions:\n\n1. The audio is now playing above\n2. Tap and hold on the audio player\n3. Select "Save to Files" from the menu\n4. Choose "Music" folder in Files app\n5. Later: Import to Apple Music via iTunes/Music app\n\nNote: Direct Apple Music import requires iTunes on computer');
+                    }, 500);
+                    
+                } else {
+                    // For video files, create a video element
+                    const video = document.createElement('video');
+                    video.src = url;
+                    video.controls = true;
+                    video.playsInline = true; // Important for iOS
+                    video.preload = 'metadata';
+                    video.style.cssText = `
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 90%;
+                        max-width: 500px;
+                        height: auto;
+                        z-index: 10000;
+                        background: black;
+                        border-radius: 10px;
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+                    `;
+                    
+                    // Add iOS-specific attributes
+                    video.setAttribute('webkit-playsinline', 'true');
+                    video.setAttribute('playsinline', 'true');
+                    
+                    // Add close button
+                    const closeBtn = document.createElement('button');
+                    closeBtn.innerHTML = '✕';
+                    closeBtn.style.cssText = `
+                        position: absolute;
+                        top: -10px;
+                        right: -10px;
+                        background: #ff4444;
+                        color: white;
+                        border: none;
+                        border-radius: 50%;
+                        width: 30px;
+                        height: 30px;
+                        font-size: 16px;
+                        cursor: pointer;
+                        z-index: 10001;
+                    `;
+                    closeBtn.onclick = () => {
+                        document.body.removeChild(video);
+                        document.body.removeChild(closeBtn);
+                        document.body.removeChild(overlay);
+                    };
+                    
+                    // Add overlay
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0, 0, 0, 0.8);
+                        z-index: 9999;
+                    `;
+                    overlay.onclick = () => {
+                        document.body.removeChild(overlay);
+                        document.body.removeChild(video);
+                        document.body.removeChild(closeBtn);
+                    };
+                    
+                    // Add to page
+                    document.body.appendChild(overlay);
+                    document.body.appendChild(video);
+                    document.body.appendChild(closeBtn);
+                    
+                    // Show instructions for video
+                    setTimeout(() => {
+                        alert('📱 iOS Video Instructions:\n\n1. The video is now playing above\n2. Tap and hold on the video\n3. Select "Save to Photos" from the menu\n4. Tap the ✕ to close when done\n\nYour video will be saved to your Photos app!');
+                    }, 500);
+                }
                 
             } else {
                 // For other devices, use normal download
@@ -1293,7 +1371,7 @@
                     if (isIOSDevice && isVideo) {
                         // For iOS video downloads, use a special approach
                         downloadButton = `
-                            <button class="download-btn" onclick="handleIOSDownload('${downloadInfo.download_url}', '${currentVideoInfo.title}.webm')" style="border: none; cursor: pointer;">
+                            <button class="download-btn" onclick="handleIOSDownload('${downloadInfo.download_url}', '${currentVideoInfo.title}.webm', false)" style="border: none; cursor: pointer;">
                                 📱 Play & Save to Photos
                             </button>
                             <p style="font-size: 12px; opacity: 0.7; margin-top: 10px;">
@@ -1304,6 +1382,32 @@
                             '<p style="color: #4ecdc4;">📱 MP4 Format: Direct compatibility with Photos</p>' :
                             '<p style="color: #ffd700;">📱 WebM Format: iOS will convert to MP4/H.264 in Photos</p>';
                         additionalInfo = formatInfo + '<p style="color: #ffd700;">📱 iOS: Video will be saved to your Photos app</p>';
+                    } else if (isIOSDevice && !isVideo) {
+                        // For iOS audio downloads, use a special approach
+                        const audioExt = selectedFormat.output_format || 'mp3';
+                        downloadButton = `
+                            <button class="download-btn" onclick="handleIOSDownload('${downloadInfo.download_url}', '${currentVideoInfo.title}.${audioExt}', true)" style="border: none; cursor: pointer;">
+                                🎵 Play & Save to Files
+                            </button>
+                            <p style="font-size: 12px; opacity: 0.7; margin-top: 10px;">
+                                Audio will play in a popup - tap and hold to save to Files
+                            </p>
+                        `;
+                        additionalInfo = `
+                            <p style="color: #ffd700;">🎵 iOS: Save to Files → Import to Apple Music via iTunes</p>
+                            <div style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 10px; margin-top: 10px; border-left: 4px solid #667eea;">
+                                <h4 style="margin: 0 0 10px 0; color: #667eea;">📱 How to Add to Apple Music:</h4>
+                                <ol style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.5;">
+                                    <li>Save audio to Files app (Music folder)</li>
+                                    <li>Connect iPhone to computer with iTunes</li>
+                                    <li>Drag audio files from Files to iTunes</li>
+                                    <li>Sync with iPhone to add to Apple Music</li>
+                                </ol>
+                                <p style="margin: 10px 0 0 0; font-size: 12px; opacity: 0.8;">
+                                    💡 Alternative: Use Apple Music subscription to upload via iCloud Music Library
+                                </p>
+                            </div>
+                        `;
                     } else if (isMobileDevice) {
                         // For other mobile devices
                         downloadButton = `

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BLACK HOLE SPLITTER</title>
+    <title>INFINITE HOLE - Video Downloader</title>
     <style>
         * {
             margin: 0;
@@ -12,43 +12,122 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
             min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Navbar */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
+            z-index: 1000;
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .cloud-save-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            display: flex;
             align-items: center;
             justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cloud-save-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .cloud-save-icon::before {
+            content: "☁";
             color: white;
-            overflow: hidden;
+            font-size: 14px;
+        }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .login-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
         }
         
-        .container {
+        .main-container {
+            padding-top: 80px;
+            min-height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            padding: 20px;
+            padding: 100px 20px 20px;
+        }
+
+        .container {
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
         
         .title {
             text-align: center;
-            margin-bottom: 60px;
+            margin-bottom: 40px;
         }
         
         .title h1 {
-            font-size: 2.5em;
-            font-weight: 700;
-            letter-spacing: 2px;
-            margin-bottom: 5px;
+            font-size: 3.5em;
+            font-weight: 900;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            letter-spacing: -2px;
         }
         
         .title h2 {
             font-size: 1.2em;
+            color: #888;
             font-weight: 300;
-            letter-spacing: 8px;
-            opacity: 0.8;
         }
         
         .black-hole {
@@ -399,23 +478,111 @@
         }
         
         .progress-container {
-            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            display: flex;
             flex-direction: column;
             align-items: center;
-            background: rgba(0, 0, 0, 0.95);
-            padding: 40px;
-            border-radius: 25px;
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            max-width: 450px;
-            width: 90%;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            z-index: 3000;
         }
         
+        .progress-title {
+            font-size: 2.5em;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .progress-subtitle {
+            font-size: 1.2em;
+            color: #888;
+            margin-bottom: 50px;
+            font-weight: 300;
+        }
+
+        .progress-circle {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #1a1a1a 0%, #0a0a0a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 40px;
+            position: relative;
+            box-shadow: 0 0 50px rgba(102, 126, 234, 0.3);
+        }
+
+        .progress-circle::before {
+            content: '';
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            top: -10px;
+            left: -10px;
+        }
+
+        .progress-ring {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top: 3px solid #667eea;
+            border-right: 3px solid #764ba2;
+            animation: rotate 2s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-text {
+            font-size: 1.5em;
+            color: #fff;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .progress-details {
+            font-size: 1.1em;
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .progress-bar-container {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0%;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        .progress-speed {
+            font-size: 1em;
+            color: #667eea;
+            font-weight: 500;
+        }
+
         .progress-header {
             display: flex;
             align-items: center;
@@ -661,12 +828,22 @@
     </style>
 </head>
 <body>
-    <!-- Main Container -->
-    <div class="container">
-        <div class="title">
-            <h1>BLACK HOLE</h1>
-            <h2>SPLITTER</h2>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <div class="cloud-save-icon" title="Cloud Save"></div>
         </div>
+        <div class="navbar-right">
+            <button class="login-btn">Login</button>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="container">
+            <div class="title">
+                <h1>INFINITE HOLE</h1>
+                <h2>Video Downloader</h2>
+            </div>
         
         <div class="black-hole" id="blackHole"></div>
         
@@ -703,22 +880,21 @@
     
     <!-- Progress Modal -->
     <div class="progress-container" id="progressContainer">
-        <div class="progress-header">
-            <div class="progress-icon" id="progressIcon">⬇️</div>
-            <div class="progress-info">
-                <div class="progress-title" id="progressTitle">Downloading...</div>
-                <div class="progress-subtitle" id="progressSubtitle">Preparing download...</div>
-            </div>
+        <div class="progress-title" id="progressTitle">INFINITE HOLE</div>
+        <div class="progress-subtitle" id="progressSubtitle">SPLITTER</div>
+        
+        <div class="progress-circle">
+            <div class="progress-ring"></div>
         </div>
+        
+        <div class="progress-text" id="progressPercentage">0% CACHED</div>
+        <div class="progress-details" id="progressDetails">0.0 MB OF 0.0 MB</div>
+        
         <div class="progress-bar-container">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
+            <div class="progress-bar" id="progressFill"></div>
         </div>
-        <div class="progress-details">
-            <div class="progress-percentage" id="progressPercentage">0%</div>
-            <div class="progress-speed" id="progressSpeed">0 MB/s</div>
-        </div>
+        
+        <div class="progress-speed" id="progressSpeed">0 MB/s</div>
     </div>
     
     <!-- Recent Downloads Modal -->
@@ -830,9 +1006,16 @@
         }
         
         // Update progress with enhanced UI
-        function updateProgress(percentage, title, subtitle, speed = '') {
+        function updateProgress(percentage, title, subtitle, speed = '', downloaded = 0, total = 0) {
             document.getElementById('progressFill').style.width = percentage + '%';
-            document.getElementById('progressPercentage').textContent = Math.round(percentage) + '%';
+            document.getElementById('progressPercentage').textContent = Math.round(percentage) + '% CACHED';
+            
+            if (downloaded > 0 && total > 0) {
+                const downloadedMB = (downloaded / (1024 * 1024)).toFixed(1);
+                const totalMB = (total / (1024 * 1024)).toFixed(1);
+                document.getElementById('progressDetails').textContent = `${downloadedMB} MB OF ${totalMB} MB`;
+            }
+            
             if (title) {
                 document.getElementById('progressTitle').textContent = title;
             }
@@ -1325,7 +1508,7 @@
             showProgress();
             
             try {
-                updateProgress(10, 'Preparing Download', 'Initializing download process...', '0 MB/s');
+                updateProgress(10, 'INFINITE HOLE', 'SPLITTER', '0 MB/s', 0, 0);
                 
                 const downloadResponse = await fetch('/download', {
                     method: 'POST',
@@ -1339,24 +1522,24 @@
                     })
                 });
                 
-                updateProgress(30, 'Downloading', 'Fetching video data...', '2.5 MB/s');
+                updateProgress(30, 'INFINITE HOLE', 'SPLITTER', '2.5 MB/s', 2500000, 10000000);
                 
                 if (!downloadResponse.ok) {
                     const errorText = await downloadResponse.text();
                     throw new Error('Failed to download: ' + errorText);
                 }
                 
-                updateProgress(70, 'Processing', 'Converting and optimizing...', '1.8 MB/s');
+                updateProgress(70, 'INFINITE HOLE', 'SPLITTER', '1.8 MB/s', 7000000, 10000000);
                 
                 const downloadInfo = await downloadResponse.json();
                 console.log('Download info:', downloadInfo);
                 
-                updateProgress(90, 'Finalizing', 'Preparing file for download...', '0.5 MB/s');
+                updateProgress(90, 'INFINITE HOLE', 'SPLITTER', '0.5 MB/s', 9000000, 10000000);
                 
                 // Add to download history
                 addToDownloadHistory(downloadInfo);
                 
-                updateProgress(100, 'Complete!', 'Download finished successfully', '0 MB/s');
+                updateProgress(100, 'INFINITE HOLE', 'SPLITTER', '0 MB/s', 10000000, 10000000);
                 
                 // Show success with mobile-optimized download
                 setTimeout(() => {
@@ -1521,6 +1704,37 @@
         document.getElementById('urlInput').addEventListener('transitionend', () => {
             if (document.getElementById('urlInput').style.display === 'flex') {
                 document.getElementById('videoUrl').focus();
+            }
+        });
+
+        // Auto-paste functionality
+        document.addEventListener('paste', (e) => {
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            if (pastedText && (pastedText.includes('youtube.com') || pastedText.includes('youtu.be') || 
+                pastedText.includes('instagram.com') || pastedText.includes('tiktok.com') || 
+                pastedText.includes('vimeo.com') || pastedText.includes('twitter.com') || 
+                pastedText.includes('x.com'))) {
+                
+                // Auto-extract video info without showing URL input
+                extractVideoInfo(pastedText);
+                e.preventDefault();
+            }
+        });
+
+        // Handle URL input when user types
+        document.getElementById('videoUrl').addEventListener('input', (e) => {
+            const url = e.target.value.trim();
+            if (url && (url.includes('youtube.com') || url.includes('youtu.be') || 
+                url.includes('instagram.com') || url.includes('tiktok.com') || 
+                url.includes('vimeo.com') || url.includes('twitter.com') || 
+                url.includes('x.com'))) {
+                
+                // Auto-extract after a short delay
+                setTimeout(() => {
+                    if (e.target.value.trim() === url) {
+                        extractVideoInfo(url);
+                    }
+                }, 1000);
             }
         });
     </script>

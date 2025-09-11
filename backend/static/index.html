@@ -1112,10 +1112,14 @@
             // Add video format options
             const videoFormats = videoInfo.formats.filter(f => f.vcodec && f.vcodec !== 'none' && f.acodec && f.acodec !== 'none');
             if (videoFormats.length > 0) {
-                // Best video format
+                // Best video format (WebM preferred)
                 const bestVideo = videoFormats.sort((a, b) => (b.quality || 0) - (a.quality || 0))[0];
-                const videoOption = createFormatOption('video', 'Video', `${bestVideo.ext.toUpperCase()} (${bestVideo.resolution || 'Best Quality'})`, 'bestvideo[ext=webm]+bestaudio[ext=webm]/bestvideo[ext!=mp4]+bestaudio[ext!=mp4]/bestvideo+bestaudio/best');
+                const videoOption = createFormatOption('video', 'Video (WebM)', `${bestVideo.ext.toUpperCase()} (${bestVideo.resolution || 'Best Quality'})`, 'bestvideo[ext=webm]+bestaudio[ext=webm]/bestvideo[ext!=mp4]+bestaudio[ext!=mp4]/bestvideo+bestaudio/best');
                 formatOptions.appendChild(videoOption);
+                
+                // iPhone-optimized format (MP4)
+                const iphoneOption = createFormatOption('video', 'Video (iPhone Optimized)', 'MP4 (H.264) - Direct Photos compatibility', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best');
+                formatOptions.appendChild(iphoneOption);
             }
             
             // Add audio format options
@@ -1236,7 +1240,10 @@
                                 Tap the button above to open video, then tap and hold to save to Photos
                             </p>
                         `;
-                        additionalInfo = '<p style="color: #ffd700;">📱 iOS: Video will be saved to your Photos app</p>';
+                        const formatInfo = selectedFormat.formatId.includes('mp4') ? 
+                            '<p style="color: #4ecdc4;">📱 MP4 Format: Direct compatibility with Photos</p>' :
+                            '<p style="color: #ffd700;">📱 WebM Format: iOS will convert to MP4/H.264 in Photos</p>';
+                        additionalInfo = formatInfo + '<p style="color: #ffd700;">📱 iOS: Video will be saved to your Photos app</p>';
                     } else if (isMobileDevice) {
                         // For other mobile devices
                         downloadButton = `

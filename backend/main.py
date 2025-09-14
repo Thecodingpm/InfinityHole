@@ -10,7 +10,7 @@ import yt_dlp
 import subprocess
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
 from dotenv import load_dotenv
@@ -54,6 +54,7 @@ class DownloadRequest(BaseModel):
     url: HttpUrl
     format_id: str
     output_format: str  # "mp4" or "mp3"
+    device_type: Optional[str] = "unknown"  # "ios", "android", "mac", "windows", "linux"
 
 class FormatInfo(BaseModel):
     format_id: str
@@ -98,9 +99,9 @@ def get_ytdl_opts() -> Dict:
         'retries': 3,
     }
 
-def get_download_opts(output_path: str, format_id: str) -> Dict:
-    """Get yt-dlp options for downloading"""
-    return {
+def get_download_opts(output_path: str, format_id: str, device_type: str = "unknown") -> Dict:
+    """Get yt-dlp options for downloading with device-specific optimization"""
+    base_opts = {
         'format': format_id,
         'outtmpl': output_path,
         'quiet': True,
@@ -108,7 +109,44 @@ def get_download_opts(output_path: str, format_id: str) -> Dict:
         'ignoreerrors': True,
         'no_check_certificate': True,
         'prefer_insecure': True,
+        'merge_output_format': 'mp4',  # Ensure MP4 output
+        'format_sort': ['res:1080', 'ext:mp4:m4a'],  # Prefer 1080p+ and MP4
+        'format_sort_force': True,  # Force format sorting
     }
+    
+    # Device-specific optimizations
+    if device_type == "ios":
+        # iOS optimization: MP4 format for compatibility
+        base_opts['postprocessors'] = [{
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mp4',
+        }]
+    elif device_type == "android":
+        # Android optimization: MP4 format
+        base_opts['postprocessors'] = [{
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mp4',
+        }]
+    elif device_type == "mac":
+        # Mac optimization: MOV format for native QuickTime compatibility
+        base_opts['postprocessors'] = [{
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mov',
+        }]
+        # Additional Mac-specific options for better compatibility
+        base_opts['writethumbnail'] = False  # Disable thumbnail generation
+        base_opts['writesubtitles'] = False  # Disable subtitle files
+        base_opts['writeautomaticsub'] = False  # Disable auto-generated subtitles
+        base_opts['embedsubtitles'] = False  # Don't embed subtitles
+        base_opts['writeinfojson'] = False  # Don't create info JSON files
+    else:
+        # Default optimization for Windows/Linux
+        base_opts['postprocessors'] = [{
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mp4',
+        }]
+    
+    return base_opts
 
 def convert_to_mp3(input_path: str, output_path: str) -> bool:
     """Convert video to MP3 using FFmpeg"""
@@ -126,6 +164,41 @@ def convert_to_mp3(input_path: str, output_path: str) -> bool:
         return result.returncode == 0
     except Exception as e:
         logger.error(f"FFmpeg conversion error: {e}")
+        return False
+
+def clean_video_for_mac(file_path: str) -> bool:
+    """Clean video metadata to ensure it opens in QuickTime/Photos instead of Subler"""
+    try:
+        # Get file extension and create temp file with same extension
+        file_ext = os.path.splitext(file_path)[1]
+        temp_path = file_path.replace(file_ext, f"_temp{file_ext}")
+        
+        cmd = [
+            'ffmpeg', '-i', file_path, 
+            '-c', 'copy',  # Copy streams without re-encoding
+            '-map_metadata', '-1',  # Remove all metadata
+            '-movflags', '+faststart',  # Optimize for streaming
+            '-y',  # Overwrite output file
+            temp_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        
+        if result.returncode == 0:
+            # Replace original file with cleaned version
+            os.replace(temp_path, file_path)
+            logger.info(f"Successfully cleaned video metadata for Mac: {file_path}")
+            return True
+        else:
+            logger.error(f"FFmpeg metadata cleaning failed: {result.stderr}")
+            # Clean up temp file if it exists
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            return False
+    except subprocess.TimeoutExpired:
+        logger.error("FFmpeg metadata cleaning timed out")
+        return False
+    except Exception as e:
+        logger.error(f"Error cleaning video metadata: {e}")
         return False
 
 def cleanup_old_files():
@@ -167,6 +240,17 @@ async def extract_video_info(request: ExtractRequest):
         with yt_dlp.YoutubeDL(get_ytdl_opts()) as ydl:
             info = ydl.extract_info(url, download=False)
             
+            # Log available qualities
+            available_qualities = []
+            for fmt in info.get('formats', []):
+                if fmt.get('vcodec') != 'none' and fmt.get('resolution'):
+                    available_qualities.append(fmt.get('resolution'))
+            
+            if available_qualities:
+                max_quality = max(available_qualities, key=lambda x: int(x.split('x')[1]) if 'x' in x else 0)
+                logger.info(f"Available qualities: {sorted(set(available_qualities), key=lambda x: int(x.split('x')[1]) if 'x' in x else 0, reverse=True)}")
+                logger.info(f"Will download in: {max_quality}")
+            
             # Filter and format available formats
             formats = []
             for fmt in info.get('formats', []):
@@ -182,6 +266,17 @@ async def extract_video_info(request: ExtractRequest):
                         quality=fmt.get('quality')
                     )
                     formats.append(format_info)
+            
+            # Sort formats by quality (resolution first, then filesize)
+            formats.sort(key=lambda x: (
+                -int(x.resolution.split('x')[1]) if x.resolution and 'x' in x.resolution else 0,
+                -(x.filesize or 0)
+            ))
+            
+            # Log the top 5 formats for debugging
+            logger.info(f"Top 5 available formats:")
+            for i, fmt in enumerate(formats[:5]):
+                logger.info(f"  {i+1}. {fmt.format_id} - {fmt.resolution} - {fmt.ext} - {fmt.vcodec}")
             
             return ExtractResponse(
                 title=info.get('title', 'Unknown'),
@@ -218,13 +313,16 @@ async def download_video(request: DownloadRequest, background_tasks: BackgroundT
     """Download video in specified format"""
     try:
         url = str(request.url)
+        device_type = request.device_type or "unknown"
         
         if not is_valid_domain(url):
             raise HTTPException(status_code=400, detail="Domain not allowed")
         
-        # Generate unique filename
+        logger.info(f"Downloading for device type: {device_type}")
+        
+        # Generate unique filename with device info
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_filename = f"download_{timestamp}"
+        base_filename = f"download_{device_type}_{timestamp}"
         
         if request.output_format == "mp3":
             # For MP3, we need to download video first, then convert
@@ -232,7 +330,7 @@ async def download_video(request: DownloadRequest, background_tasks: BackgroundT
             final_path = STORAGE_DIR / f"{base_filename}.mp3"
             
             # Download video
-            with yt_dlp.YoutubeDL(get_download_opts(str(temp_video_path), request.format_id)) as ydl:
+            with yt_dlp.YoutubeDL(get_download_opts(str(temp_video_path), request.format_id, device_type)) as ydl:
                 ydl.download([url])
             
             # Convert to MP3
@@ -245,19 +343,43 @@ async def download_video(request: DownloadRequest, background_tasks: BackgroundT
             
         else:  # Video format - use the format's native extension
             # Handle yt-dlp format selection strings
-            if '/' in request.format_id or '[' in request.format_id:
+            if '/' in request.format_id or '[' in request.format_id or request.format_id == 'best':
                 # This is a yt-dlp format selection string, let yt-dlp handle it
                 final_path = STORAGE_DIR / f"{base_filename}.%(ext)s"
                 
-                with yt_dlp.YoutubeDL(get_download_opts(str(final_path), request.format_id)) as ydl:
+                # Use better format selection for maximum available quality
+                format_selector = request.format_id
+                if format_selector == 'best':
+                    # For maximum quality, use best video + best audio, fallback to best
+                    format_selector = 'bestvideo+bestaudio/best'
+                elif 'best' in format_selector:
+                    # Ensure we're getting the highest quality available
+                    format_selector = 'bestvideo+bestaudio/best'
+                
+                logger.info(f"Using format selector: {format_selector}")
+                
+                with yt_dlp.YoutubeDL(get_download_opts(str(final_path), format_selector, device_type)) as ydl:
                     ydl.download([url])
                 
                 # Find the downloaded file
                 downloaded_files = list(STORAGE_DIR.glob(f"{base_filename}.*"))
+                logger.info(f"Looking for files matching: {base_filename}.*")
+                logger.info(f"Found files: {[f.name for f in downloaded_files]}")
+                
                 if downloaded_files:
                     final_path = downloaded_files[0]
+                    logger.info(f"Selected file: {final_path.name}")
                 else:
-                    raise HTTPException(status_code=500, detail="No file was downloaded")
+                    # Try to find any recently created files in the downloads directory
+                    all_files = list(STORAGE_DIR.glob("*"))
+                    recent_files = [f for f in all_files if f.stat().st_mtime > (datetime.now().timestamp() - 60)]
+                    logger.info(f"Recent files in downloads: {[f.name for f in recent_files]}")
+                    
+                    if recent_files:
+                        final_path = recent_files[0]
+                        logger.info(f"Using recent file: {final_path.name}")
+                    else:
+                        raise HTTPException(status_code=500, detail="No file was downloaded")
             else:
                 # Specific format ID - get the format info to determine the correct extension
                 with yt_dlp.YoutubeDL(get_ytdl_opts()) as ydl:
@@ -272,11 +394,18 @@ async def download_video(request: DownloadRequest, background_tasks: BackgroundT
                 
                 final_path = STORAGE_DIR / f"{base_filename}.{ext}"
                 
-                with yt_dlp.YoutubeDL(get_download_opts(str(final_path), request.format_id)) as ydl:
+                with yt_dlp.YoutubeDL(get_download_opts(str(final_path), request.format_id, device_type)) as ydl:
                     ydl.download([url])
+        
+        # Clean video metadata for Mac to ensure it opens in QuickTime/Photos
+        if device_type == "mac" and (str(final_path).endswith('.mp4') or str(final_path).endswith('.mov')):
+            logger.info(f"Cleaning metadata for Mac file: {final_path.name}")
+            clean_video_for_mac(str(final_path))
         
         # Check file size
         file_size = final_path.stat().st_size
+        logger.info(f"Final file size: {file_size} bytes")
+        
         if file_size > MAX_FILE_SIZE_MB * 1024 * 1024:
             final_path.unlink(missing_ok=True)
             raise HTTPException(status_code=413, detail="File too large")
@@ -284,6 +413,7 @@ async def download_video(request: DownloadRequest, background_tasks: BackgroundT
         # Schedule cleanup
         background_tasks.add_task(cleanup_old_files)
         
+        logger.info(f"Returning download response for: {final_path.name}")
         return DownloadResponse(
             download_url=f"/files/{final_path.name}",
             filename=final_path.name,
@@ -310,8 +440,8 @@ async def serve_file(filename: str):
 
 @app.get("/")
 async def root():
-    """Serve the main web interface"""
-    return FileResponse("static/index.html")
+    """Redirect to Next.js frontend"""
+    return RedirectResponse(url="http://localhost:3000")
 
 @app.get("/health")
 async def health_check():

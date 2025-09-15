@@ -400,27 +400,27 @@ class MultiStorageManager:
         # Initialize storage providers in priority order
         self.providers = []
         
-        # Try to initialize Firebase Storage
-        try:
-            firebase_provider = FirebaseStorageProvider()
-            if firebase_provider.is_available():
-                self.providers.append(firebase_provider)
-                print("✅ Firebase Storage initialized successfully")
-            else:
-                print("⚠️ Firebase Storage not available - using fallback")
-        except Exception as e:
-            print(f"⚠️ Firebase Storage initialization failed: {e}")
-        
-        # Try to initialize Cloudinary
+        # Try to initialize Cloudinary FIRST (primary storage)
         try:
             cloudinary_provider = CloudinaryStorageProvider()
             if cloudinary_provider.is_available():
                 self.providers.append(cloudinary_provider)
-                print("✅ Cloudinary Storage initialized successfully")
+                print("✅ Cloudinary Storage initialized successfully (PRIMARY)")
             else:
                 print("⚠️ Cloudinary Storage not available - using fallback")
         except Exception as e:
             print(f"⚠️ Cloudinary Storage initialization failed: {e}")
+        
+        # Try to initialize Firebase Storage (secondary)
+        try:
+            firebase_provider = FirebaseStorageProvider()
+            if firebase_provider.is_available():
+                self.providers.append(firebase_provider)
+                print("✅ Firebase Storage initialized successfully (SECONDARY)")
+            else:
+                print("⚠️ Firebase Storage not available - using fallback")
+        except Exception as e:
+            print(f"⚠️ Firebase Storage initialization failed: {e}")
         
         # Always add Local Storage as fallback
         local_provider = LocalStorageProvider()
@@ -560,6 +560,22 @@ class MultiStorageManager:
     def list_files(self, user_id: str) -> List[Dict]:
         """List all files for a user across all providers"""
         user_info = self._get_user_storage_info(user_id)
+        current_provider_idx = user_info.get("current_provider", 0)
+        
+        # Try to get files from the current provider
+        if current_provider_idx < len(self.providers):
+            current_provider = self.providers[current_provider_idx]
+            if current_provider.is_available():
+                try:
+                    files = current_provider.list_files(user_id)
+                    # Update user info with current files
+                    user_info["files"] = files
+                    self._save_user_storage_info(user_id, user_info)
+                    return files
+                except Exception as e:
+                    print(f"Failed to list files from current provider: {e}")
+        
+        # Fallback to stored files
         return user_info.get("files", [])
     
     def get_storage_info(self, user_id: str) -> Dict:

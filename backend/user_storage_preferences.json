@@ -2,13 +2,29 @@
   "demo_user_123": {
     "current_provider": 0,
     "ads_watched": 0,
-    "storage_used": 0.0,
-    "files": []
+    "storage_used": 2.47955322265625e-05,
+    "files": [
+      {
+        "id": "1757899052_test_file.txt",
+        "name": "test_file.txt",
+        "size": 13,
+        "provider": "Cloudinary",
+        "uploaded_at": 1757899053.961313
+      }
+    ]
   },
   "Nz4lWEhy6PdUUQTMpU8nGCQQ1pV2": {
     "current_provider": 0,
     "ads_watched": 0,
-    "storage_used": 0.0,
-    "files": []
+    "storage_used": 3.7878408432006836,
+    "files": [
+      {
+        "id": "1757898915_download_mac_20250915_061458.mov",
+        "name": "download_mac_20250915_061458.mov",
+        "size": 3971839,
+        "provider": "Cloudinary",
+        "uploaded_at": 1757898920.695913
+      }
+    ]
   }
 }

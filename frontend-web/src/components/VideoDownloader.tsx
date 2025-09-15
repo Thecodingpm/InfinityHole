@@ -27,10 +27,18 @@ interface VideoDownloaderProps {
 }
 
 export function VideoDownloader({ videoInfo, onDownload, onClose }: VideoDownloaderProps) {
-  const [selectedFormat, setSelectedFormat] = useState<string>('');
+  const [selectedFormat, setSelectedFormat] = useState<string>('bestvideo+bestaudio/best');
   const [outputFormat, setOutputFormat] = useState<'mp4' | 'mp3'>('mp4');
 
-  const videoFormats = videoInfo.formats.filter(f => f.vcodec && f.vcodec !== 'none');
+  // Create quality options for video formats
+  const qualityOptions = [
+    { id: 'bestvideo+bestaudio/best', label: 'Best Quality (Auto)', description: 'Highest available quality' },
+    { id: 'bestvideo[height<=1080]+bestaudio/best[height<=1080]', label: '1080p', description: 'Full HD quality' },
+    { id: 'bestvideo[height<=720]+bestaudio/best[height<=720]', label: '720p', description: 'HD quality' },
+    { id: 'bestvideo[height<=480]+bestaudio/best[height<=480]', label: '480p', description: 'Standard quality' },
+    { id: 'bestvideo[height<=360]+bestaudio/best[height<=360]', label: '360p', description: 'Low quality' },
+  ];
+
   const audioFormats = videoInfo.formats.filter(f => f.acodec && f.acodec !== 'none' && (!f.vcodec || f.vcodec === 'none'));
 
   const handleDownload = () => {
@@ -99,23 +107,22 @@ export function VideoDownloader({ videoInfo, onDownload, onClose }: VideoDownloa
           <label className="block text-white font-semibold mb-2">Select Quality:</label>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {outputFormat === 'mp4' ? (
-              videoFormats.map((format) => (
-                <label key={format.format_id} className="flex items-center p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
+              qualityOptions.map((option) => (
+                <label key={option.id} className="flex items-center p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
                   <input
                     type="radio"
                     name="format"
-                    value={format.format_id}
-                    checked={selectedFormat === format.format_id}
+                    value={option.id}
+                    checked={selectedFormat === option.id}
                     onChange={(e) => setSelectedFormat(e.target.value)}
                     className="mr-3"
                   />
                   <div className="flex-1">
                     <div className="text-white font-medium">
-                      {format.resolution || format.quality || format.ext.toUpperCase()}
+                      {option.label}
                     </div>
                     <div className="text-gray-400 text-sm">
-                      {format.vcodec} • {format.acodec} • {format.fps ? `${format.fps}fps` : ''}
-                      {format.filesize && ` • ${(format.filesize / (1024 * 1024)).toFixed(1)}MB`}
+                      {option.description}
                     </div>
                   </div>
                 </label>
@@ -149,8 +156,7 @@ export function VideoDownloader({ videoInfo, onDownload, onClose }: VideoDownloa
         {/* Download Button */}
         <button
           onClick={handleDownload}
-          disabled={!selectedFormat}
-          className="w-full py-3 px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black rounded-xl font-semibold hover:shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          className="w-full py-3 px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black rounded-xl font-semibold hover:shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 transform hover:-translate-y-1"
         >
           Download {outputFormat.toUpperCase()}
         </button>

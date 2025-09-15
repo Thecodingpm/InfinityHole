@@ -35,6 +35,13 @@ venv.bak/
 .env.test.local
 .env.production.local
 
+# Firebase and sensitive files
+backend/firebase-service-account.json
+backend/users.json
+backend/user_storage_preferences.json
+firebase-service-account.json
+service-account-key.json
+
 # IDE
 .vscode/
 .idea/

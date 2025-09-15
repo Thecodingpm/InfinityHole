@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 
 interface LoginModalProps {
   onClose: () => void;
 }
 
 export function LoginModal({ onClose }: LoginModalProps) {
+  const { login, register, loading } = useFirebaseAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -15,27 +17,27 @@ export function LoginModal({ onClose }: LoginModalProps) {
     username: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       if (isLogin) {
-        console.log('Login attempt:', { email: formData.email, password: formData.password });
-        // Add actual login logic here
+        await login(formData.email, formData.password);
       } else {
-        console.log('Register attempt:', formData);
-        // Add actual registration logic here
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        await register(formData.username, formData.email, formData.password);
       }
       
       // Close modal on success
       onClose();
-    } catch (error) {
-      console.error('Authentication error:', error);
+    } catch (error: any) {
+      setError(error.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +83,12 @@ export function LoginModal({ onClose }: LoginModalProps) {
             {isLogin ? 'Sign in to continue your journey' : 'Create your account to get started'}
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
@@ -149,10 +157,10 @@ export function LoginModal({ onClose }: LoginModalProps) {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || loading}
             className="w-full py-3 px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black rounded-xl font-semibold hover:shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
-            {isLoading ? (
+            {(isLoading || loading) ? (
               <div className="flex items-center justify-center">
                 <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin mr-2"></div>
                 {isLogin ? 'Signing In...' : 'Creating Account...'}

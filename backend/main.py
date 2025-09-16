@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 import aiofiles
 import logging
 import io
-from storage_manager import storage_manager
+from storage_manager_simple import storage_manager
 
 # Load environment variables
 load_dotenv()
@@ -29,25 +29,8 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Firebase Admin SDK for authentication
-try:
-    import firebase_admin
-    from firebase_admin import credentials
-    
-    if not firebase_admin._apps:
-        # Try to initialize with service account if available
-        service_account_path = "firebase-service-account.json"
-        if os.path.exists(service_account_path):
-            cred = credentials.Certificate(service_account_path)
-            firebase_admin.initialize_app(cred)
-            print("✅ Firebase Admin SDK initialized for authentication")
-        else:
-            print("⚠️ Firebase service account not found - authentication will use fallback")
-    else:
-        print("✅ Firebase Admin SDK already initialized")
-except Exception as e:
-    print(f"⚠️ Firebase Admin SDK initialization failed: {e}")
-    print("⚠️ Authentication will use fallback system")
+# Firebase Admin SDK not available in simplified version
+print("⚠️ Using simplified authentication system")
 
 app = FastAPI(title="Video Downloader API", version="1.0.0")
 
@@ -1093,5 +1076,5 @@ if __name__ == "__main__":
         "main:app",
         host=os.getenv("HOST", "0.0.0.0"),
         port=int(os.getenv("PORT", "8000")),
-        reload=True
+        reload=False
     )

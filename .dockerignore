@@ -1,0 +1,18 @@
+# Ignore everything except backend folder
+*
+!backend/
+!backend/**
+
+# Ignore git and other files
+.git
+.gitignore
+README.md
+*.md
+frontend/
+frontend-web/
+test_*
+download*
+setup*
+*.sh
+*.py
+!backend/*.py

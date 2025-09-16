@@ -136,3 +136,4 @@ export function useFirebaseAuth() {
   }
   return context;
 }
+

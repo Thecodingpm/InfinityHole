@@ -23,18 +23,41 @@ interface FormatInfo {
 
 interface StorageChoiceModalProps {
   videoInfo: VideoInfo;
-  onLocalDownload: () => void;
-  onCloudDownload: () => void;
+  onLocalDownload: (format: 'video' | 'audio') => void;
+  onCloudDownload: (format: 'video' | 'audio') => void;
   onClose: () => void;
 }
 
 export function StorageChoiceModal({ videoInfo, onLocalDownload, onCloudDownload, onClose }: StorageChoiceModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedFormat, setSelectedFormat] = useState<'video' | 'audio'>('video');
+
+  // Device detection function
+  const detectDevice = () => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const platform = navigator.platform.toLowerCase();
+    
+    if (/iphone|ipad|ipod/.test(userAgent)) {
+      return { type: 'ios', format: 'mp4', quality: 'bestvideo+bestaudio/best' };
+    } else if (/android/.test(userAgent)) {
+      return { type: 'android', format: 'mp4', quality: 'bestvideo+bestaudio/best' };
+    } else if (/macintosh|mac os x/.test(userAgent) || platform.includes('mac')) {
+      return { type: 'mac', format: 'mp4', quality: 'bestvideo+bestaudio/best' };
+    } else if (/windows/.test(userAgent)) {
+      return { type: 'windows', format: 'mp4', quality: 'bestvideo+bestaudio/best' };
+    } else if (/linux/.test(userAgent)) {
+      return { type: 'linux', format: 'mp4', quality: 'bestvideo+bestaudio/best' };
+    } else {
+      return { type: 'unknown', format: 'mp4', quality: 'bestvideo+bestaudio/best' };
+    }
+  };
+
+  const device = detectDevice();
 
   const handleLocalDownload = async () => {
     setIsProcessing(true);
     try {
-      await onLocalDownload();
+      await onLocalDownload(selectedFormat);
     } finally {
       setIsProcessing(false);
     }
@@ -43,7 +66,7 @@ export function StorageChoiceModal({ videoInfo, onLocalDownload, onCloudDownload
   const handleCloudDownload = async () => {
     setIsProcessing(true);
     try {
-      await onCloudDownload();
+      await onCloudDownload(selectedFormat);
     } finally {
       setIsProcessing(false);
     }
@@ -92,6 +115,77 @@ export function StorageChoiceModal({ videoInfo, onLocalDownload, onCloudDownload
               className="w-full h-32 object-cover rounded-lg"
             />
           )}
+        </div>
+
+        {/* Device Detection Info */}
+        <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 rounded-xl p-4 mb-6 border border-green-500/20">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-white font-medium text-sm">
+                Detected Device: <span className="text-green-400 font-semibold">{device.type.toUpperCase()}</span>
+              </p>
+              <p className="text-gray-400 text-xs">
+                Optimized for {device.type} • {device.format.toUpperCase()} format
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Format Selection */}
+        <div className="mb-6">
+          <h4 className="text-white font-semibold mb-3">Choose Format:</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setSelectedFormat('video')}
+              className={`p-4 rounded-xl border transition-all duration-300 ${
+                selectedFormat === 'video'
+                  ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-blue-500/50 text-blue-400'
+                  : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
+              }`}
+            >
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${
+                  selectedFormat === 'video' 
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500' 
+                    : 'bg-white/10'
+                }`}>
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                  </svg>
+                </div>
+                <span className="font-medium text-sm">Video</span>
+                <span className="text-xs opacity-75">MP4 • {device.format.toUpperCase()}</span>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => setSelectedFormat('audio')}
+              className={`p-4 rounded-xl border transition-all duration-300 ${
+                selectedFormat === 'audio'
+                  ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/50 text-purple-400'
+                  : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
+              }`}
+            >
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${
+                  selectedFormat === 'audio' 
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
+                    : 'bg-white/10'
+                }`}>
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                  </svg>
+                </div>
+                <span className="font-medium text-sm">Audio</span>
+                <span className="text-xs opacity-75">MP3 • High Quality</span>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Storage Options */}
@@ -168,3 +262,4 @@ export function StorageChoiceModal({ videoInfo, onLocalDownload, onCloudDownload
     </div>
   );
 }
+

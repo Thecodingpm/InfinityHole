@@ -47,23 +47,6 @@ export function Navbar() {
               </button>
             </div>
 
-            {/* Center - Logo/Brand */}
-            <div className="flex items-center">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg shadow-yellow-500/25">
-                  <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                  </svg>
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                    BLACK HOLE
-                  </h1>
-                  <p className="text-xs text-gray-400 -mt-1">Video Splitter</p>
-                </div>
-              </div>
-            </div>
-
             {/* Right side - User Menu or Login */}
             <div className="flex items-center">
               {user ? (

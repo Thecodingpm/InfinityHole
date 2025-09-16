@@ -54,3 +54,4 @@ python main.py
 Your app should now work without the "Invalid authentication credentials" error!
 
 **Try it now**: http://localhost:3000 🎉
+

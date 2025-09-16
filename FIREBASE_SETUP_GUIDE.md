@@ -74,3 +74,4 @@ If you don't want to set up Firebase right now, your app will automatically use 
 3. **Test your app** - it should work now!
 
 The authentication error will be fixed! 🎉
+

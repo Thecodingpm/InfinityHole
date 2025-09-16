@@ -156,3 +156,4 @@ If AdMob rejects your app:
 - **Approval Rate**: 70-90%
 - **Time to Approval**: 1-3 days
 - **Risk Level**: Low
+

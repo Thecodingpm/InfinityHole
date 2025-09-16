@@ -26,9 +26,6 @@ export function BlackHole({ onClick }: BlackHoleProps) {
       >
         {/* Custom Infinity Hole Logo */}
         <div className="relative w-full h-full">
-          {/* Outer glow */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 blur-2xl scale-150 group-hover:scale-[1.8] transition-all duration-1000 animate-pulse"></div>
-          
           {/* Main black hole */}
           <div 
             className="absolute inset-0 rounded-full"

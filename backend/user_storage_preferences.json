@@ -2,28 +2,34 @@
   "demo_user_123": {
     "current_provider": 0,
     "ads_watched": 0,
-    "storage_used": 2.47955322265625e-05,
+    "storage_used": 0.0001201629638671875,
     "files": [
       {
-        "id": "1757899052_test_file.txt",
+        "id": "1758026456_test_file.txt",
         "name": "test_file.txt",
-        "size": 13,
+        "size": 27,
         "provider": "Cloudinary",
-        "uploaded_at": 1757899053.961313
+        "uploaded_at": 1758026460.795854
       }
     ]
   },
   "Nz4lWEhy6PdUUQTMpU8nGCQQ1pV2": {
     "current_provider": 0,
     "ads_watched": 0,
-    "storage_used": 3.7878408432006836,
+    "storage_used": 20.13028335571289,
+    "files": []
+  },
+  "test_user_123": {
+    "current_provider": 0,
+    "ads_watched": 0,
+    "storage_used": 4.291534423828125e-05,
     "files": [
       {
-        "id": "1757898915_download_mac_20250915_061458.mov",
-        "name": "download_mac_20250915_061458.mov",
-        "size": 3971839,
+        "id": "1758018614_test_file.txt",
+        "name": "test_file.txt",
+        "size": 45,
         "provider": "Cloudinary",
-        "uploaded_at": 1757898920.695913
+        "uploaded_at": 1758018615.931325
       }
     ]
   }

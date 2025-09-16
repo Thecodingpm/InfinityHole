@@ -272,14 +272,53 @@ def list_cloud_files(user_id: str) -> List[Dict]:
 # Utility functions
 def is_valid_domain(url: str) -> bool:
     """Check if the URL domain is allowed"""
-    # Hardcode the domains for now to ensure it works
+    # Expanded list of supported domains
     allowed_domains = [
-        "youtube.com", "youtu.be", "www.youtube.com", "m.youtube.com",
+        # YouTube
+        "youtube.com", "youtu.be", "www.youtube.com", "m.youtube.com", "music.youtube.com",
+        # Instagram
         "instagram.com", "www.instagram.com", "m.instagram.com",
-        "tiktok.com", "www.tiktok.com", "vm.tiktok.com",
+        # TikTok
+        "tiktok.com", "www.tiktok.com", "vm.tiktok.com", "m.tiktok.com",
+        # Vimeo
         "vimeo.com", "www.vimeo.com", "player.vimeo.com",
-        "twitter.com", "www.twitter.com", "mobile.twitter.com",
-        "x.com", "www.x.com", "mobile.x.com"
+        # Twitter/X
+        "twitter.com", "www.twitter.com", "mobile.twitter.com", "x.com", "www.x.com", "mobile.x.com",
+        # Facebook
+        "facebook.com", "www.facebook.com", "m.facebook.com", "fb.watch",
+        # Twitch
+        "twitch.tv", "www.twitch.tv", "clips.twitch.tv",
+        # Dailymotion
+        "dailymotion.com", "www.dailymotion.com",
+        # Reddit
+        "reddit.com", "www.reddit.com", "v.redd.it",
+        # Adult content platforms
+        "pornhub.com", "www.pornhub.com", "xvideos.com", "www.xvideos.com",
+        "xhamster.com", "www.xhamster.com", "redtube.com", "www.redtube.com",
+        "youporn.com", "www.youporn.com", "tube8.com", "www.tube8.com",
+        "xtube.com", "www.xtube.com", "beeg.com", "www.beeg.com",
+        "tnaflix.com", "www.tnaflix.com", "empflix.com", "www.empflix.com",
+        "slutload.com", "www.slutload.com", "keezmovies.com", "www.keezmovies.com",
+        "drtuber.com", "www.drtuber.com", "nuvid.com", "www.nuvid.com",
+        "sunporno.com", "www.sunporno.com", "porn.com", "www.porn.com",
+        "pornhd.com", "www.pornhd.com", "pornoxo.com", "www.pornoxo.com",
+        # Live streaming & cam sites
+        "onlyfans.com", "www.onlyfans.com", "chaturbate.com", "www.chaturbate.com",
+        "cam4.com", "www.cam4.com", "myfreecams.com", "www.myfreecams.com",
+        "livejasmin.com", "www.livejasmin.com", "stripchat.com", "www.stripchat.com",
+        "bongacams.com", "www.bongacams.com", "camsoda.com", "www.camsoda.com",
+        "streamate.com", "www.streamate.com", "imlive.com", "www.imlive.com",
+        # Other platforms
+        "rumble.com", "www.rumble.com", "bitchute.com", "www.bitchute.com",
+        "odysee.com", "www.odysee.com", "lbry.tv", "www.lbry.tv",
+        "metacafe.com", "www.metacafe.com", "veoh.com", "www.veoh.com",
+        "break.com", "www.break.com", "liveleak.com", "www.liveleak.com",
+        "archive.org", "www.archive.org", "vuclip.com", "www.vuclip.com",
+        "vid.me", "www.vid.me", "streamable.com", "www.streamable.com",
+        "gfycat.com", "www.gfycat.com", "imgur.com", "www.imgur.com",
+        "9gag.com", "www.9gag.com", "vine.co", "www.vine.co",
+        "periscope.tv", "www.periscope.tv", "meerkat.tv", "www.meerkat.tv",
+        "blab.im", "www.blab.im", "younow.com", "www.younow.com"
     ]
     return any(domain in url for domain in allowed_domains)
 
@@ -293,9 +332,81 @@ def get_ytdl_opts() -> Dict:
         'ignoreerrors': True,
         'no_check_certificate': True,
         'prefer_insecure': True,
-        'extractor_retries': 3,
-        'fragment_retries': 3,
-        'retries': 3,
+        'extractor_retries': 10,
+        'fragment_retries': 10,
+        'retries': 10,
+        # Enhanced anti-bot detection measures
+        'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'referer': 'https://www.pornhub.com/',
+        'sleep_interval': 5,
+        'max_sleep_interval': 15,
+        'extractor_retries': 15,
+        'fragment_retries': 15,
+        'retries': 15,
+        'sleep_interval_requests': 2,
+        # Additional options for better compatibility
+        'cookiesfrombrowser': None,  # Don't use browser cookies
+        'geo_bypass': True,  # Bypass geo-restrictions
+        'geo_bypass_country': 'US',  # Use US as default country
+        'geo_bypass_ip_block': None,  # Don't block any IPs
+        'force_ipv4': True,  # Force IPv4
+        'extractor_args': {
+            'youtube': {
+                'skip': ['dash', 'hls'],  # Skip problematic formats
+                'player_skip': ['configs'],
+                'player_client': ['android', 'web'],  # Try different player clients
+            },
+            'pornhub': {
+                'age_limit': 18,  # Explicitly set age limit
+                'skip': ['dash'],
+                'player_skip': ['configs'],
+                'player_client': ['android', 'web'],
+            },
+            'xvideos': {
+                'age_limit': 18,
+            },
+            'xhamster': {
+                'age_limit': 18,
+            },
+            'redtube': {
+                'age_limit': 18,
+            },
+            'youporn': {
+                'age_limit': 18,
+            },
+            'tube8': {
+                'age_limit': 18,
+            },
+            'xtube': {
+                'age_limit': 18,
+            },
+            'beeg': {
+                'age_limit': 18,
+            },
+            'onlyfans': {
+                'age_limit': 18,
+            },
+            'chaturbate': {
+                'age_limit': 18,
+            }
+        },
+        # Timeout settings
+        'socket_timeout': 120,
+        'http_timeout': 120,
+        # Additional headers to look more like a real browser
+        'http_headers': {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0',
+        },
     }
 
 def get_download_opts(output_path: str, format_id: str, device_type: str = "unknown") -> Dict:
@@ -311,6 +422,78 @@ def get_download_opts(output_path: str, format_id: str, device_type: str = "unkn
         'merge_output_format': 'mp4',  # Ensure MP4 output
         'format_sort': ['res:1080', 'ext:mp4:m4a'],  # Prefer 1080p+ and MP4
         'format_sort_force': True,  # Force format sorting
+        # Enhanced anti-bot detection measures
+        'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'referer': 'https://www.pornhub.com/',
+        'sleep_interval': 5,
+        'max_sleep_interval': 15,
+        'extractor_retries': 15,
+        'fragment_retries': 15,
+        'retries': 15,
+        'sleep_interval_requests': 2,
+        # Additional options for better compatibility
+        'cookiesfrombrowser': None,  # Don't use browser cookies
+        'geo_bypass': True,  # Bypass geo-restrictions
+        'geo_bypass_country': 'US',  # Use US as default country
+        'geo_bypass_ip_block': None,  # Don't block any IPs
+        'force_ipv4': True,  # Force IPv4
+        'extractor_args': {
+            'youtube': {
+                'skip': ['dash', 'hls'],  # Skip problematic formats
+                'player_skip': ['configs'],
+                'player_client': ['android', 'web'],  # Try different player clients
+            },
+            'pornhub': {
+                'age_limit': 18,  # Explicitly set age limit
+                'skip': ['dash'],
+                'player_skip': ['configs'],
+                'player_client': ['android', 'web'],
+            },
+            'xvideos': {
+                'age_limit': 18,
+            },
+            'xhamster': {
+                'age_limit': 18,
+            },
+            'redtube': {
+                'age_limit': 18,
+            },
+            'youporn': {
+                'age_limit': 18,
+            },
+            'tube8': {
+                'age_limit': 18,
+            },
+            'xtube': {
+                'age_limit': 18,
+            },
+            'beeg': {
+                'age_limit': 18,
+            },
+            'onlyfans': {
+                'age_limit': 18,
+            },
+            'chaturbate': {
+                'age_limit': 18,
+            }
+        },
+        # Timeout settings
+        'socket_timeout': 120,
+        'http_timeout': 120,
+        # Additional headers to look more like a real browser
+        'http_headers': {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0',
+        },
     }
     
     # Device-specific optimizations
@@ -664,6 +847,10 @@ async def extract_video_info(request: ExtractRequest):
         with yt_dlp.YoutubeDL(get_ytdl_opts()) as ydl:
             info = ydl.extract_info(url, download=False)
             
+            # Check if extraction was successful
+            if info is None:
+                raise Exception("Failed to extract video information. The video may be private, restricted, or temporarily unavailable.")
+            
             # Log available qualities
             available_qualities = []
             for fmt in info.get('formats', []):
@@ -719,16 +906,30 @@ async def extract_video_info(request: ExtractRequest):
         error_msg = str(e) if str(e) else f"Unknown error: {type(e).__name__}"
         
         # Provide more specific error messages
-        if "Video unavailable" in error_msg:
+        if "Sign in to confirm you're not a bot" in error_msg or "Sign in to confirm your age" in error_msg:
+            error_msg = "Access issue - please try again or use a different URL"
+        elif "Video unavailable" in error_msg or "unavailable" in error_msg.lower():
             error_msg = "This video is unavailable or private"
-        elif "Sign in to confirm your age" in error_msg:
-            error_msg = "This video is age-restricted and cannot be downloaded"
-        elif "Video unavailable" in error_msg:
-            error_msg = "This video is not available for download"
-        elif "HTTP Error 403" in error_msg:
-            error_msg = "Access denied - this video may be restricted"
-        elif "HTTP Error 404" in error_msg:
+        elif "HTTP Error 403" in error_msg or "403" in error_msg:
+            error_msg = "Access denied - this video may be restricted or YouTube is blocking requests"
+        elif "HTTP Error 404" in error_msg or "404" in error_msg:
             error_msg = "Video not found - please check the URL"
+        elif "NoneType" in error_msg and "get" in error_msg:
+            error_msg = "Unable to extract video information. The video may be private, restricted, or temporarily unavailable."
+        elif "Private video" in error_msg or "private" in error_msg.lower():
+            error_msg = "This video is private and cannot be downloaded"
+        elif "This video is not available" in error_msg or "not available" in error_msg.lower():
+            error_msg = "This video is not available in your region or has been removed"
+        elif "age-restricted" in error_msg.lower() or "age restricted" in error_msg.lower():
+            error_msg = "Video access issue - please try again or use a different URL"
+        elif "copyright" in error_msg.lower():
+            error_msg = "This video is protected by copyright and cannot be downloaded"
+        elif "blocked" in error_msg.lower():
+            error_msg = "This video is blocked in your region"
+        elif "live" in error_msg.lower() and "stream" in error_msg.lower():
+            error_msg = "Live streams cannot be downloaded"
+        elif "playlist" in error_msg.lower():
+            error_msg = "Please use a direct video URL, not a playlist URL"
         
         raise HTTPException(status_code=400, detail=f"Failed to extract video info: {error_msg}")
 
@@ -754,26 +955,34 @@ async def download_video(request: DownloadRequest, background_tasks: BackgroundT
             final_path = STORAGE_DIR / f"{base_filename}.mp3"
             
             # Use best audio format for MP3 conversion
-            audio_format = "bestaudio" if request.format_id == "bestaudio" else "bestaudio"
+            audio_format = "bestaudio"
+            
+            # Create audio-specific download options
+            audio_opts = get_download_opts(str(temp_audio_path), audio_format, device_type)
+            audio_opts.update({
+                'format': 'bestaudio/best',
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                }],
+                'outtmpl': str(final_path),
+            })
             
             # Download audio
-            with yt_dlp.YoutubeDL(get_download_opts(str(temp_audio_path), audio_format, device_type)) as ydl:
-                ydl.download([url])
-            
-            # Find the downloaded audio file
-            downloaded_files = list(STORAGE_DIR.glob(f"{base_filename}_temp.*"))
-            if not downloaded_files:
-                raise HTTPException(status_code=500, detail="No audio file was downloaded")
-            
-            temp_audio_file = downloaded_files[0]
-            
-            # Convert to MP3
-            if not convert_to_mp3(str(temp_audio_file), str(final_path)):
-                temp_audio_file.unlink(missing_ok=True)
-                raise HTTPException(status_code=500, detail="Failed to convert to MP3")
-            
-            # Clean up temp audio file
-            temp_audio_file.unlink(missing_ok=True)
+            try:
+                with yt_dlp.YoutubeDL(audio_opts) as ydl:
+                    ydl.download([url])
+                
+                # Check if MP3 file was created
+                if not final_path.exists():
+                    raise HTTPException(status_code=500, detail="Failed to extract audio to MP3")
+                    
+                logger.info(f"Audio successfully extracted to: {final_path}")
+                
+            except Exception as e:
+                logger.error(f"Audio download error: {e}")
+                raise HTTPException(status_code=500, detail=f"Audio extraction failed: {str(e)}")
             
         else:  # Video format - use the format's native extension
             # Handle yt-dlp format selection strings

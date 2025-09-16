@@ -8,10 +8,12 @@ import { LoadingModal } from '@/components/LoadingModal';
 import { ResultModal } from '@/components/ResultModal';
 import { VideoDownloader } from '@/components/VideoDownloader';
 import { StorageChoiceModal } from '@/components/StorageChoiceModal';
+import { LandingPage } from '@/components/LandingPage';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 
 export default function Home() {
   const { user } = useFirebaseAuth();
+  const [showLandingPage, setShowLandingPage] = useState(true);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; content: string } | null>(null);
@@ -20,6 +22,31 @@ export default function Home() {
   const [videoInfo, setVideoInfo] = useState<any>(null);
   const [showVideoDownloader, setShowVideoDownloader] = useState(false);
   const [showStorageChoice, setShowStorageChoice] = useState(false);
+
+  // Utility function to clean up error messages
+  const cleanErrorMessage = (errorMessage: string): string => {
+    let cleaned = errorMessage;
+    
+    // Remove any remaining JSON structure first
+    if (cleaned.includes('{"detail":')) {
+      try {
+        const parsed = JSON.parse(cleaned);
+        cleaned = parsed.detail || cleaned;
+      } catch {
+        // If parsing fails, keep the original message
+      }
+    }
+    
+    // Remove common prefixes (do this multiple times to handle nested cases)
+    while (cleaned.includes('Failed to extract video info: ')) {
+      cleaned = cleaned.replace('Failed to extract video info: ', '');
+    }
+    while (cleaned.includes('Failed to download video: ')) {
+      cleaned = cleaned.replace('Failed to download video: ', '');
+    }
+    
+    return cleaned;
+  };
 
   // Check clipboard for video URLs
   useEffect(() => {
@@ -43,16 +70,25 @@ export default function Home() {
   }, [user]);
 
   const isVideoUrl = (url: string) => {
-    const videoDomains = ['youtube.com', 'instagram.com', 'tiktok.com', 'vimeo.com', 'twitter.com'];
+    const videoDomains = [
+      'youtube.com', 'youtu.be', 'instagram.com', 'tiktok.com', 'vimeo.com', 'twitter.com', 'x.com',
+      'facebook.com', 'fb.watch', 'twitch.tv', 'dailymotion.com', 'reddit.com', 'redd.it',
+      'pornhub.com', 'xvideos.com', 'xhamster.com', 'redtube.com', 'youporn.com', 'tube8.com',
+      'xtube.com', 'beeg.com', 'tnaflix.com', 'empflix.com', 'slutload.com', 'keezmovies.com',
+      'drtuber.com', 'nuvid.com', 'sunporno.com', 'porn.com', 'pornhd.com', 'pornoxo.com',
+      'onlyfans.com', 'chaturbate.com', 'cam4.com', 'myfreecams.com', 'livejasmin.com',
+      'stripchat.com', 'bongacams.com', 'camsoda.com', 'streamate.com', 'imlive.com',
+      'vimeo.com', 'dailymotion.com', 'metacafe.com', 'veoh.com', 'break.com', 'liveleak.com',
+      'rumble.com', 'odysee.com', 'bitchute.com', 'd.tube', 'lbry.tv', 'peertube.com',
+      'archive.org', 'vuclip.com', 'vid.me', 'streamable.com', 'gfycat.com', 'imgur.com',
+      '9gag.com', 'vine.co', 'periscope.tv', 'meerkat.tv', 'blab.im', 'younow.com'
+    ];
     return videoDomains.some(domain => url.includes(domain));
   };
 
   const handleBlackHoleClick = async () => {
-    if (clipboardUrl) {
-      await handleExtractVideoInfo(clipboardUrl);
-    } else {
-      setShowUrlInput(true);
-    }
+    // Always show URL input popup when black hole is clicked
+    setShowUrlInput(true);
   };
 
   // Device detection function
@@ -94,8 +130,15 @@ export default function Home() {
       });
 
       if (!extractResponse.ok) {
-        const errorText = await extractResponse.text();
-        throw new Error('Failed to extract video info: ' + errorText);
+        let errorMessage = 'Failed to extract video info';
+        try {
+          const errorData = await extractResponse.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (parseError) {
+          const errorText = await extractResponse.text();
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(cleanErrorMessage(errorMessage));
       }
 
       const extractedVideoInfo = await extractResponse.json();
@@ -109,7 +152,7 @@ export default function Home() {
       console.error('Extract error:', error);
       let errorMessage = 'Failed to extract video info. Please try again.';
       if (error.message) {
-        errorMessage = error.message;
+        errorMessage = cleanErrorMessage(error.message);
       }
       setError(errorMessage);
       const content = `
@@ -169,7 +212,7 @@ export default function Home() {
     }
   };
 
-  const handleLocalDownload = async () => {
+  const handleLocalDownload = async (format: 'video' | 'audio') => {
     if (!videoInfo) return;
 
     setIsLoading(true);
@@ -196,7 +239,7 @@ export default function Home() {
         body: JSON.stringify({
           url: videoInfo.url || '',
           format_id: device.quality, // Use device-optimized quality
-          output_format: device.format === 'mov' ? 'mp4' : device.format, // Convert mov to mp4 for compatibility
+          output_format: format === 'audio' ? 'mp3' : (device.format === 'mov' ? 'mp4' : device.format), // Use selected format
           device_type: device.type
         }),
         signal: controller.signal
@@ -206,8 +249,15 @@ export default function Home() {
       console.log('Download response received:', downloadResponse.status, downloadResponse.ok);
 
       if (!downloadResponse.ok) {
-        const errorText = await downloadResponse.text();
-        throw new Error('Failed to download video: ' + errorText);
+        let errorMessage = 'Failed to download video';
+        try {
+          const errorData = await downloadResponse.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          const errorText = await downloadResponse.text();
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const downloadInfo = await downloadResponse.json();
@@ -279,7 +329,7 @@ export default function Home() {
       if (error.name === 'AbortError') {
         errorMessage = 'Download timed out. Please try again with a shorter video.';
       } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = cleanErrorMessage(error.message);
       }
       setError(errorMessage);
       const content = `
@@ -306,7 +356,7 @@ export default function Home() {
     }
   };
 
-  const handleCloudDownload = async () => {
+  const handleCloudDownload = async (format: 'video' | 'audio') => {
     if (!videoInfo) return;
 
     if (!user) {
@@ -319,14 +369,40 @@ export default function Home() {
     setResult(null);
     setError(null);
 
+    // Declare progressInterval outside try block so it can be cleared in catch
+    let progressInterval: NodeJS.Timeout | null = null;
+
     try {
       const device = detectDevice();
       console.log('Starting cloud download');
       console.log('Detected device:', device);
 
-      // Download video with timeout
+      // Show initial progress message
+      setResult({
+        success: false,
+        content: `
+          <div class="text-center">
+            <div class="mb-6">
+              <div class="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/30 animate-pulse">
+                <svg class="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+              <h3 class="text-2xl font-bold text-green-400 mb-2">Downloading Video...</h3>
+              <p class="text-gray-400 mb-4">Preparing your video for cloud storage</p>
+              <div class="w-full bg-gray-700 rounded-full h-2 mb-2">
+                <div class="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full animate-pulse" style="width: 30%"></div>
+              </div>
+              <p class="text-sm text-gray-500">Step 1 of 2: Downloading video...</p>
+            </div>
+          </div>
+        `
+      });
+
+      // Download video with extended timeout for large files
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+      const timeoutId = setTimeout(() => controller.abort(), 900000); // 15 minute timeout for large videos
       
       const downloadResponse = await fetch('http://localhost:8000/download', {
         method: 'POST',
@@ -336,7 +412,7 @@ export default function Home() {
         body: JSON.stringify({
           url: videoInfo.url || '',
           format_id: device.quality, // Use device-optimized quality
-          output_format: device.format === 'mov' ? 'mp4' : device.format, // Convert mov to mp4 for compatibility
+          output_format: format === 'audio' ? 'mp3' : (device.format === 'mov' ? 'mp4' : device.format), // Use selected format
           device_type: device.type
         }),
         signal: controller.signal
@@ -345,15 +421,92 @@ export default function Home() {
       clearTimeout(timeoutId);
 
       if (!downloadResponse.ok) {
-        const errorText = await downloadResponse.text();
-        throw new Error('Failed to download video: ' + errorText);
+        let errorMessage = 'Failed to download video';
+        try {
+          const errorData = await downloadResponse.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          const errorText = await downloadResponse.text();
+          errorMessage = errorText || errorMessage;
+        }
+        console.error('Download failed:', errorMessage);
+        
+        // Handle specific download errors
+        if (downloadResponse.status === 408 || downloadResponse.status === 504) {
+          throw new Error('Download timeout. The video is too large or taking too long. Try a shorter video or check your internet connection.');
+        } else if (downloadResponse.status === 413) {
+          throw new Error('Video file is too large to download. Try a shorter video or lower quality.');
+        } else {
+          throw new Error(errorMessage);
+        }
       }
 
       const downloadInfo = await downloadResponse.json();
       console.log('Download info:', downloadInfo);
 
-      // Save to cloud storage
+      // Save to cloud storage with timeout and better error handling
       const token = await user.getIdToken();
+      console.log('Firebase token obtained, uploading to cloud...');
+      
+      // Calculate estimated upload time based on file size
+      const fileSizeMB = downloadInfo.filesize / (1024 * 1024);
+      const estimatedMinutes = Math.max(1, Math.ceil(fileSizeMB / 10)); // Rough estimate: 10MB per minute
+      
+      // Show cloud upload progress message with time estimation
+      setResult({
+        success: false,
+        content: `
+          <div class="text-center">
+            <div class="mb-6">
+              <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30 animate-pulse">
+                <svg class="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+              <h3 class="text-2xl font-bold text-blue-400 mb-2">Uploading to Cloud...</h3>
+              <p class="text-gray-400 mb-4">Step 2 of 2: Saving to your cloud storage</p>
+              <div class="w-full bg-gray-700 rounded-full h-2 mb-2">
+                <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full animate-pulse" style="width: 70%"></div>
+              </div>
+              <p class="text-sm text-gray-500">Uploading ${fileSizeMB.toFixed(1)} MB to cloud storage...</p>
+              <p class="text-xs text-gray-600 mt-2">⏱️ Estimated time: ${estimatedMinutes} minute${estimatedMinutes > 1 ? 's' : ''}</p>
+            </div>
+          </div>
+        `
+      });
+      
+      const cloudController = new AbortController();
+      const cloudTimeoutId = setTimeout(() => cloudController.abort(), 1200000); // 20 minute timeout for large files
+      
+      // Start progress simulation for better UX
+      let progressPercent = 70;
+      progressInterval = setInterval(() => {
+        progressPercent = Math.min(95, progressPercent + Math.random() * 5);
+        setResult({
+          success: false,
+          content: `
+            <div class="text-center">
+              <div class="mb-6">
+                <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30 animate-pulse">
+                  <svg class="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <h3 class="text-2xl font-bold text-blue-400 mb-2">Uploading to Cloud...</h3>
+                <p class="text-gray-400 mb-4">Step 2 of 2: Saving to your cloud storage</p>
+                <div class="w-full bg-gray-700 rounded-full h-2 mb-2">
+                  <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500" style="width: ${progressPercent}%"></div>
+                </div>
+                <p class="text-sm text-gray-500">Uploading ${fileSizeMB.toFixed(1)} MB to cloud storage...</p>
+                <p class="text-xs text-gray-600 mt-2">⏱️ Estimated time: ${Math.max(1, Math.ceil(estimatedMinutes * (1 - progressPercent/100)))} minute${Math.max(1, Math.ceil(estimatedMinutes * (1 - progressPercent/100))) > 1 ? 's' : ''} remaining</p>
+              </div>
+            </div>
+          `
+        });
+      }, 2000);
+      
       const cloudResponse = await fetch('http://localhost:8000/cloud/save-download', {
         method: 'POST',
         headers: {
@@ -365,11 +518,28 @@ export default function Home() {
           file_type: device.format === 'mov' ? 'mp4' : device.format,
           file_size: downloadInfo.filesize
         }),
+        signal: cloudController.signal
       });
+      
+      clearTimeout(cloudTimeoutId);
+      clearInterval(progressInterval);
 
       if (!cloudResponse.ok) {
         const errorData = await cloudResponse.json();
-        throw new Error(`Failed to save to cloud: ${errorData.detail}`);
+        console.error('Cloud upload failed:', errorData);
+        
+        // Handle specific error cases
+        if (cloudResponse.status === 401) {
+          throw new Error('Authentication failed. Please login again and try cloud upload.');
+        } else if (cloudResponse.status === 404) {
+          throw new Error('Downloaded file not found. The video may have been cleaned up. Please try downloading again.');
+        } else if (cloudResponse.status === 413) {
+          throw new Error('File too large for cloud storage. Try downloading a shorter video or lower quality.');
+        } else if (cloudResponse.status === 408 || cloudResponse.status === 504) {
+          throw new Error('Upload timeout. The file is too large or your connection is slow. Try a smaller video.');
+        } else {
+          throw new Error(`Cloud upload failed: ${errorData.detail || 'Unknown error. Please try again.'}`);
+        }
       }
 
       // Show success with cloud save info
@@ -416,9 +586,12 @@ export default function Home() {
 
     } catch (error: any) {
       console.error('Cloud download error:', error);
+      if (progressInterval) {
+        clearInterval(progressInterval); // Clear progress interval on error
+      }
       let errorMessage = 'Failed to save video to cloud. Please try again.';
       if (error.name === 'AbortError') {
-        errorMessage = 'Download timed out. Please try again with a shorter video.';
+        errorMessage = 'Upload timed out. The file is too large or your connection is slow. Try a smaller video.';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -481,8 +654,15 @@ export default function Home() {
       clearTimeout(timeoutId);
 
       if (!downloadResponse.ok) {
-        const errorText = await downloadResponse.text();
-        throw new Error('Failed to download video: ' + errorText);
+        let errorMessage = 'Failed to download video';
+        try {
+          const errorData = await downloadResponse.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          const errorText = await downloadResponse.text();
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const downloadInfo = await downloadResponse.json();
@@ -563,7 +743,7 @@ export default function Home() {
       if (error.name === 'AbortError') {
         errorMessage = 'Download timed out. Please try again with a shorter video.';
       } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = cleanErrorMessage(error.message);
       }
       setError(errorMessage);
       const content = `
@@ -590,6 +770,15 @@ export default function Home() {
     }
   };
 
+  const handleEnterApp = () => {
+    setShowLandingPage(false);
+  };
+
+  // Show landing page first
+  if (showLandingPage) {
+    return <LandingPage onEnterApp={handleEnterApp} />;
+  }
+
   return (
     <main className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white overflow-hidden relative">
       {/* Navbar */}
@@ -604,16 +793,10 @@ export default function Home() {
         <div className="text-center mb-16 md:mb-20">
           <div className="mb-6 md:mb-8">
             <h1 className="text-5xl md:text-8xl font-black tracking-wider mb-4 md:mb-6 text-white">
-              SPLITTER
+              INFINITY HOLE
             </h1>
             <div className="w-32 md:w-40 h-1 bg-white/20 mx-auto rounded-full"></div>
           </div>
-          <h2 className="text-xl md:text-3xl font-light tracking-[0.2em] md:tracking-[0.3em] text-slate-300 mb-3 md:mb-4">
-            Video Downloader
-          </h2>
-          <p className="text-slate-400 text-sm md:text-lg max-w-sm md:max-w-lg mx-auto leading-relaxed font-light px-2">
-            Download videos from YouTube, Instagram, TikTok, and more
-          </p>
         </div>
 
         {/* Black Hole Section */}
@@ -623,71 +806,7 @@ export default function Home() {
 
         {/* Action Buttons */}
         <div className="flex flex-col items-center space-y-6 md:space-y-8 w-full max-w-sm md:max-w-none">
-          {/* Test Button - Remove this later */}
-          <button 
-            className="group flex items-center space-x-4 md:space-x-6 px-6 md:px-10 py-4 md:py-5 bg-red-500/20 hover:bg-red-500/30 rounded-2xl md:rounded-3xl transition-all duration-300 border border-red-500/30 hover:border-red-500/50 w-full md:w-auto"
-            onClick={() => {
-              console.log('Test button clicked');
-              setResult({ 
-                success: true, 
-                content: `
-                  <div class="text-center">
-                    <div class="mb-6">
-                      <div class="w-16 h-16 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/30">
-                        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                        </svg>
-                      </div>
-                      <h3 class="text-2xl font-bold text-emerald-400 mb-2">Test Success!</h3>
-                      <p class="text-slate-300 text-sm">This is a test message</p>
-                    </div>
-                  </div>
-                `
-              });
-            }}
-          >
-            <div className="w-8 h-8 md:w-10 md:h-10 bg-red-500/20 rounded-lg md:rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-300">
-              <svg className="w-5 h-5 md:w-6 md:h-6 text-red-400" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-              </svg>
-            </div>
-            <div className="text-left flex-1">
-              <div className="text-red-400 font-bold text-lg md:text-xl">Test Success Modal</div>
-              <div className="text-red-400/80 text-xs md:text-sm">Click to test success message</div>
-            </div>
-          </button>
 
-          {/* Primary Action Button */}
-          <button 
-            className="group flex items-center space-x-4 md:space-x-6 px-6 md:px-10 py-4 md:py-5 bg-white/10 hover:bg-white/20 rounded-2xl md:rounded-3xl transition-all duration-300 border border-white/20 hover:border-white/30 w-full md:w-auto"
-            onClick={() => setShowUrlInput(true)}
-          >
-            <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-lg md:rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-300">
-              <svg className="w-5 h-5 md:w-6 md:h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-              </svg>
-            </div>
-            <div className="text-left flex-1">
-              <div className="text-white font-bold text-lg md:text-xl">Browse Videos</div>
-              <div className="text-white/80 text-xs md:text-sm">Add video URL manually</div>
-            </div>
-          </button>
-
-          {/* Secondary Info */}
-          <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4 lg:space-x-8 text-slate-400 text-xs md:text-sm w-full">
-            <div className="flex items-center space-x-2 md:space-x-3 bg-white/5 px-3 md:px-4 py-2 rounded-full border border-white/10">
-              <div className="w-2 h-2 bg-white/40 rounded-full"></div>
-              <span className="font-medium">50+ platforms</span>
-            </div>
-            <div className="flex items-center space-x-2 md:space-x-3 bg-white/5 px-3 md:px-4 py-2 rounded-full border border-white/10">
-              <div className="w-2 h-2 bg-white/40 rounded-full"></div>
-              <span className="font-medium">MP4 & MP3</span>
-            </div>
-            <div className="flex items-center space-x-2 md:space-x-3 bg-white/5 px-3 md:px-4 py-2 rounded-full border border-white/10">
-              <div className="w-2 h-2 bg-white/40 rounded-full"></div>
-              <span className="font-medium">4K Quality</span>
-            </div>
-          </div>
         </div>
       </div>
 

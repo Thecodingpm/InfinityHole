@@ -69,7 +69,7 @@ export function UrlInput({ onClose, onDownload }: UrlInputProps) {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="https://youtube.com/watch?v=..."
+              placeholder="https://youtube.com/watch?v=... or any video URL"
               className="w-full p-4 pl-12 bg-slate-800/50 border border-slate-700/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 backdrop-blur-sm"
             />
             <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
@@ -118,7 +118,23 @@ export function UrlInput({ onClose, onDownload }: UrlInputProps) {
             </div>
             <div className="flex items-center space-x-1">
               <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-orange-400 rounded-full"></div>
+              <span>Facebook</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-red-400 rounded-full"></div>
+              <span>Twitch</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-cyan-400 rounded-full"></div>
               <span>Vimeo</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-yellow-400 rounded-full"></div>
+              <span>Twitter</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-400 rounded-full"></div>
+              <span>+40 More</span>
             </div>
           </div>
         </div>

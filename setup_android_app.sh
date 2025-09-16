@@ -34,3 +34,4 @@ if [ $? -eq 0 ]; then
 else
     echo "❌ APK build failed. Check the errors above."
 fi
+

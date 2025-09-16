@@ -570,7 +570,7 @@ class MultiStorageManager:
                     files = current_provider.list_files(user_id)
                     # Update user info with current files
                     user_info["files"] = files
-                    self._save_user_storage_info(user_id, user_info)
+                    self._save_user_preferences()
                     return files
                 except Exception as e:
                     print(f"Failed to list files from current provider: {e}")

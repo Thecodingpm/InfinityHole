@@ -5,10 +5,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy backend files
-COPY backend/ ./backend/
-
-# Set working directory to backend
-WORKDIR /app/backend
+COPY backend/ ./
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \

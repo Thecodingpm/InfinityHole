@@ -54,9 +54,12 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
   const handleDownload = (option: string) => {
     if (option === 'website') {
       onEnterApp();
-    } else {
-      // For now, just open the app - you can add actual download links later
-      onEnterApp();
+    } else if (option === 'android') {
+      // Download Android APK
+      window.open('/downloads/infinity-hole.apk', '_blank');
+    } else if (option === 'mac') {
+      // Download Mac DMG (you'll need to create this)
+      window.open('/downloads/infinity-hole.dmg', '_blank');
     }
   };
 

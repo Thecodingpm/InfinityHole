@@ -10,6 +10,7 @@ import { VideoDownloader } from '@/components/VideoDownloader';
 import { StorageChoiceModal } from '@/components/StorageChoiceModal';
 import { LandingPage } from '@/components/LandingPage';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
+import { getApiUrl } from '@/lib/config';
 
 export default function Home() {
   const { user } = useFirebaseAuth();
@@ -121,7 +122,7 @@ export default function Home() {
       console.log('Extracting video info for URL:', url);
 
       // Extract video info
-      const extractResponse = await fetch('http://localhost:8000/extract', {
+      const extractResponse = await fetch(getApiUrl('/extract'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,7 +188,7 @@ export default function Home() {
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch('http://localhost:8000/cloud/save-download', {
+      const response = await fetch(getApiUrl('/cloud/save-download'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -231,7 +232,7 @@ export default function Home() {
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
       
       console.log('Sending download request to backend...');
-      const downloadResponse = await fetch('http://localhost:8000/download', {
+      const downloadResponse = await fetch(getApiUrl('/download'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -404,7 +405,7 @@ export default function Home() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 900000); // 15 minute timeout for large videos
       
-      const downloadResponse = await fetch('http://localhost:8000/download', {
+      const downloadResponse = await fetch(getApiUrl('/download'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -507,7 +508,7 @@ export default function Home() {
         });
       }, 2000);
       
-      const cloudResponse = await fetch('http://localhost:8000/cloud/save-download', {
+      const cloudResponse = await fetch(getApiUrl('/cloud/save-download'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -637,7 +638,7 @@ export default function Home() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
       
-      const downloadResponse = await fetch('http://localhost:8000/download', {
+      const downloadResponse = await fetch(getApiUrl('/download'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

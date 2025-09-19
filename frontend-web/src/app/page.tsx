@@ -8,6 +8,7 @@ import { LoadingModal } from '@/components/LoadingModal';
 import { ResultModal } from '@/components/ResultModal';
 import { VideoDownloader } from '@/components/VideoDownloader';
 import { StorageChoiceModal } from '@/components/StorageChoiceModal';
+import { SegmentSelector } from '@/components/SegmentSelector';
 import { LandingPage } from '@/components/LandingPage';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { getApiUrl } from '@/lib/config';
@@ -23,6 +24,7 @@ export default function Home() {
   const [videoInfo, setVideoInfo] = useState<any>(null);
   const [showVideoDownloader, setShowVideoDownloader] = useState(false);
   const [showStorageChoice, setShowStorageChoice] = useState(false);
+  const [showSegmentSelector, setShowSegmentSelector] = useState(false);
 
   // Utility function to clean up error messages
   const cleanErrorMessage = (errorMessage: string): string => {
@@ -145,9 +147,18 @@ export default function Home() {
       const extractedVideoInfo = await extractResponse.json();
       console.log('Video info:', extractedVideoInfo);
 
-      // Set video info with original URL and show storage choice
+      // Set video info with original URL
       setVideoInfo({ ...extractedVideoInfo, url: url });
-      setShowStorageChoice(true);
+      
+      // Check if video is long (more than 1 hour) and show segment selector
+      const duration = extractedVideoInfo.duration;
+      if (duration && duration > 3600) { // 3600 seconds = 1 hour
+        console.log('Long video detected, showing segment selector');
+        setShowSegmentSelector(true);
+      } else {
+        // Show normal storage choice for short videos
+        setShowStorageChoice(true);
+      }
 
     } catch (error: any) {
       console.error('Extract error:', error);
@@ -621,6 +632,12 @@ export default function Home() {
     }
   };
 
+  const handleSegmentDownload = async (startTime: number, endTime: number, formatId: string, outputFormat: 'mp4' | 'mp3') => {
+    // This function is now handled by the SegmentSelector component itself
+    // The progress tracking and download happens within the component
+    console.log('Segment download initiated:', { startTime, endTime, formatId, outputFormat });
+  };
+
   const handleDownload = async (formatId: string, outputFormat: 'mp4' | 'mp3') => {
     if (!videoInfo) return;
 
@@ -833,6 +850,14 @@ export default function Home() {
           videoInfo={videoInfo}
           onDownload={handleDownload}
           onClose={() => setShowVideoDownloader(false)}
+        />
+      )}
+
+      {showSegmentSelector && videoInfo && (
+        <SegmentSelector 
+          videoInfo={videoInfo}
+          onSegmentSelected={handleSegmentDownload}
+          onClose={() => setShowSegmentSelector(false)}
         />
       )}
 

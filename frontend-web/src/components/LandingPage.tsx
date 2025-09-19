@@ -58,7 +58,7 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
       // Download Android APK
       window.open('/downloads/infinity-hole.apk', '_blank');
     } else if (option === 'mac') {
-      // Download Mac DMG (you'll need to create this)
+      // Download Mac DMG
       window.open('/downloads/infinity-hole.dmg', '_blank');
     }
   };

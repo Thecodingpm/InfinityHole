@@ -5,6 +5,7 @@ import tempfile
 import shutil
 import hashlib
 import secrets
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Tuple
@@ -79,6 +80,8 @@ class DownloadRequest(BaseModel):
     format_id: str
     output_format: str  # "mp4" or "mp3"
     device_type: Optional[str] = "unknown"  # "ios", "android", "mac", "windows", "linux"
+    start_time: Optional[float] = None  # Start time in seconds for segment extraction
+    end_time: Optional[float] = None    # End time in seconds for segment extraction
 
 class UserRegister(BaseModel):
     username: str
@@ -133,13 +136,16 @@ class FormatInfo(BaseModel):
 class ExtractResponse(BaseModel):
     title: str
     thumbnail: Optional[str] = None
-    duration: Optional[int] = None
+    duration: Optional[float] = None
     formats: List[FormatInfo]
 
 class DownloadResponse(BaseModel):
     download_url: str
     filename: str
     filesize: int
+
+class DownloadSegmentStartResponse(BaseModel):
+    progress_id: str
 
 # Authentication utility functions
 def hash_password(password: str) -> str:
@@ -530,6 +536,166 @@ def convert_to_mp3(input_path: str, output_path: str) -> bool:
     except Exception as e:
         logger.error(f"FFmpeg conversion error: {e}")
         return False
+
+def extract_segment(input_path: str, output_path: str, start_time: float, end_time: float, output_format: str = "mp4") -> bool:
+    """Extract a segment from video using FFmpeg with progress tracking"""
+    try:
+        duration = end_time - start_time
+        
+        if output_format == "mp3":
+            # Extract audio segment
+            cmd = [
+                'ffmpeg', '-i', input_path,
+                '-ss', str(start_time),  # Start time
+                '-t', str(duration),     # Duration
+                '-vn',  # No video
+                '-acodec', 'mp3',
+                '-ab', '192k',  # Audio bitrate
+                '-ar', '44100',  # Sample rate
+                '-progress', 'pipe:1',  # Output progress to stdout
+                '-y',  # Overwrite output file
+                output_path
+            ]
+        else:
+            # Extract video segment
+            cmd = [
+                'ffmpeg', '-i', input_path,
+                '-ss', str(start_time),  # Start time
+                '-t', str(duration),     # Duration
+                '-c', 'copy',  # Copy streams without re-encoding for speed
+                '-avoid_negative_ts', 'make_zero',  # Handle timestamp issues
+                '-progress', 'pipe:1',  # Output progress to stdout
+                '-y',  # Overwrite output file
+                output_path
+            ]
+        
+        logger.info(f"Extracting segment: {start_time}s to {end_time}s ({duration}s duration)")
+        
+        # Run FFmpeg with progress tracking
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        # Monitor progress
+        progress_lines = []
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                progress_lines.append(output.strip())
+                # Log progress every 10 lines to avoid spam
+                if len(progress_lines) % 10 == 0:
+                    logger.info(f"Segment extraction progress: {len(progress_lines)} lines processed")
+        
+        # Get the final result
+        stdout, stderr = process.communicate()
+        
+        if process.returncode == 0:
+            logger.info(f"Segment extraction successful: {output_path}")
+            return True
+        else:
+            logger.error(f"Segment extraction failed: {stderr}")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        logger.error("Segment extraction timed out")
+        return False
+    except Exception as e:
+        logger.error(f"Segment extraction error: {e}")
+        return False
+
+def extract_segment_with_progress(input_path: str, output_path: str, start_time: float, end_time: float, output_format: str = "mp4"):
+    """Extract a segment from video using FFmpeg with real-time progress updates"""
+    import time
+    import threading
+    
+    duration = end_time - start_time
+    progress_data = {
+        'status': 'starting',
+        'progress': 0,
+        'time_remaining': 0,
+        'speed': 0,
+        'error': None
+    }
+    
+    def run_extraction():
+        try:
+            progress_data['status'] = 'extracting'
+            
+            if output_format == "mp3":
+                cmd = [
+                    'ffmpeg', '-i', input_path,
+                    '-ss', str(start_time),
+                    '-t', str(duration),
+                    '-vn',
+                    '-acodec', 'mp3',
+                    '-ab', '192k',
+                    '-ar', '44100',
+                    '-progress', 'pipe:1',
+                    '-y',
+                    output_path
+                ]
+            else:
+                cmd = [
+                    'ffmpeg', '-i', input_path,
+                    '-ss', str(start_time),
+                    '-t', str(duration),
+                    '-c', 'copy',
+                    '-avoid_negative_ts', 'make_zero',
+                    '-progress', 'pipe:1',
+                    '-y',
+                    output_path
+                ]
+            
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            start_time_actual = time.time()
+            
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    line = output.strip()
+                    # Parse FFmpeg progress
+                    if 'out_time_ms=' in line:
+                        try:
+                            time_ms = int(line.split('out_time_ms=')[1])
+                            time_seconds = time_ms / 1000000
+                            progress = min(100, (time_seconds / duration) * 100)
+                            progress_data['progress'] = progress
+                            
+                            # Calculate time remaining
+                            elapsed = time.time() - start_time_actual
+                            if progress > 0:
+                                total_estimated = elapsed / (progress / 100)
+                                remaining = total_estimated - elapsed
+                                progress_data['time_remaining'] = max(0, remaining)
+                        except:
+                            pass
+                    elif 'speed=' in line:
+                        try:
+                            speed = line.split('speed=')[1].split('x')[0]
+                            progress_data['speed'] = float(speed)
+                        except:
+                            pass
+            
+            stdout, stderr = process.communicate()
+            
+            if process.returncode == 0:
+                progress_data['status'] = 'completed'
+                progress_data['progress'] = 100
+            else:
+                progress_data['status'] = 'error'
+                progress_data['error'] = stderr
+                
+        except Exception as e:
+            progress_data['status'] = 'error'
+            progress_data['error'] = str(e)
+    
+    # Start extraction in a separate thread
+    thread = threading.Thread(target=run_extraction)
+    thread.start()
+    
+    return progress_data
 
 def clean_video_for_mac(file_path: str) -> bool:
     """Clean video metadata to ensure it opens in QuickTime/Photos instead of Subler"""
@@ -922,15 +1088,27 @@ async def download_video(request: DownloadRequest, background_tasks: BackgroundT
     try:
         url = str(request.url)
         device_type = request.device_type or "unknown"
+        start_time = request.start_time
+        end_time = request.end_time
         
         if not is_valid_domain(url):
             raise HTTPException(status_code=400, detail="Domain not allowed")
         
+        # Validate segment parameters
+        if start_time is not None and end_time is not None:
+            if start_time < 0 or end_time <= start_time:
+                raise HTTPException(status_code=400, detail="Invalid segment time range")
+            if end_time - start_time > 3600:  # Max 1 hour segment
+                raise HTTPException(status_code=400, detail="Segment too long (max 1 hour)")
+        
         logger.info(f"Downloading for device type: {device_type}")
+        if start_time is not None and end_time is not None:
+            logger.info(f"Segment extraction: {start_time}s to {end_time}s")
         
         # Generate unique filename with device info
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_filename = f"download_{device_type}_{timestamp}"
+        segment_suffix = f"_segment_{int(start_time)}_{int(end_time)}" if start_time is not None and end_time is not None else ""
+        base_filename = f"download_{device_type}_{timestamp}{segment_suffix}"
         
         if request.output_format == "mp3":
             # For MP3, we need to download audio first, then convert
@@ -962,6 +1140,19 @@ async def download_video(request: DownloadRequest, background_tasks: BackgroundT
                     raise HTTPException(status_code=500, detail="Failed to extract audio to MP3")
                     
                 logger.info(f"Audio successfully extracted to: {final_path}")
+                
+                # If segment extraction is requested, extract segment from the MP3
+                if start_time is not None and end_time is not None:
+                    temp_segment_path = STORAGE_DIR / f"{base_filename}_segment_temp.mp3"
+                    if extract_segment(str(final_path), str(temp_segment_path), start_time, end_time, "mp3"):
+                        # Replace original with segment
+                        os.replace(str(temp_segment_path), str(final_path))
+                        logger.info(f"Segment extracted successfully: {final_path}")
+                    else:
+                        # Clean up temp file
+                        if temp_segment_path.exists():
+                            temp_segment_path.unlink()
+                        raise HTTPException(status_code=500, detail="Failed to extract audio segment")
                 
             except Exception as e:
                 logger.error(f"Audio download error: {e}")
@@ -1002,6 +1193,19 @@ async def download_video(request: DownloadRequest, background_tasks: BackgroundT
                         logger.info(f"Using recent file: {final_path.name}")
                     else:
                         raise HTTPException(status_code=500, detail="No file was downloaded")
+                
+                # If segment extraction is requested, extract segment from the video
+                if start_time is not None and end_time is not None:
+                    temp_segment_path = STORAGE_DIR / f"{base_filename}_segment_temp{final_path.suffix}"
+                    if extract_segment(str(final_path), str(temp_segment_path), start_time, end_time, "mp4"):
+                        # Replace original with segment
+                        os.replace(str(temp_segment_path), str(final_path))
+                        logger.info(f"Video segment extracted successfully: {final_path}")
+                    else:
+                        # Clean up temp file
+                        if temp_segment_path.exists():
+                            temp_segment_path.unlink()
+                        raise HTTPException(status_code=500, detail="Failed to extract video segment")
             else:
                 # Specific format ID - get the format info to determine the correct extension
                 with yt_dlp.YoutubeDL(get_ytdl_opts()) as ydl:
@@ -1064,6 +1268,181 @@ async def serve_file(filename: str):
 async def root():
     """Redirect to Next.js frontend"""
     return RedirectResponse(url="http://localhost:3000")
+
+# Global progress tracking for segment downloads
+segment_progress = {}
+
+def _perform_segment_download(progress_id: str, url: str, request: DownloadRequest, device_type: str, base_filename: str):
+    """Worker that downloads full video then extracts segment, updating progress dict."""
+    try:
+        segment_progress[progress_id]['status'] = 'downloading'
+        segment_progress[progress_id]['message'] = 'Downloading full video...'
+        segment_progress[progress_id]['progress'] = 0
+
+        temp_video_path = STORAGE_DIR / f"{base_filename}_temp.%(ext)s"
+        final_path = STORAGE_DIR / f"{base_filename}.{request.output_format}"
+
+        # Use yt-dlp progress hook to update percentage up to 50%
+        def progress_hook(d):
+            try:
+                if d.get('status') == 'downloading':
+                    total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
+                    downloaded = d.get('downloaded_bytes') or 0
+                    if total and downloaded:
+                        pct = max(0.0, min(100.0, (downloaded / total) * 50.0))
+                        segment_progress[progress_id]['progress'] = pct
+                        segment_progress[progress_id]['message'] = 'Downloading full video...'
+                elif d.get('status') == 'finished':
+                    segment_progress[progress_id]['progress'] = 50.0
+                    segment_progress[progress_id]['message'] = 'Download complete. Extracting segment...'
+            except Exception:
+                pass
+
+        download_opts = get_download_opts(str(temp_video_path), request.format_id, device_type)
+        download_opts['progress_hooks'] = [progress_hook]
+
+        with yt_dlp.YoutubeDL(download_opts) as ydl:
+            ydl.download([url])
+
+        # Locate downloaded temp file
+        downloaded_files = list(STORAGE_DIR.glob(f"{base_filename}_temp.*"))
+        if not downloaded_files:
+            raise Exception("Failed to download video")
+
+        temp_file = downloaded_files[0]
+
+        # Extract segment with progress (second half 50->100)
+        segment_progress[progress_id]['status'] = 'extracting'
+        segment_progress[progress_id]['message'] = 'Extracting segment...'
+        segment_progress[progress_id]['progress'] = max(50.0, segment_progress[progress_id].get('progress', 50.0))
+
+        # Build ffmpeg command with progress output
+        seg_start = request.start_time or 0
+        seg_end = request.end_time or 0
+        seg_duration = max(0.1, seg_end - seg_start)
+
+        if request.output_format == "mp3":
+            cmd = [
+                'ffmpeg', '-i', str(temp_file),
+                '-ss', str(seg_start),
+                '-t', str(seg_duration),
+                '-vn',
+                '-acodec', 'mp3',
+                '-ab', '192k',
+                '-ar', '44100',
+                '-progress', 'pipe:1',
+                '-y', str(final_path)
+            ]
+        else:
+            cmd = [
+                'ffmpeg', '-i', str(temp_file),
+                '-ss', str(seg_start),
+                '-t', str(seg_duration),
+                '-c', 'copy',
+                '-avoid_negative_ts', 'make_zero',
+                '-progress', 'pipe:1',
+                '-y', str(final_path)
+            ]
+
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        while True:
+            line = proc.stdout.readline()
+            if line == '' and proc.poll() is not None:
+                break
+            if not line:
+                continue
+            line = line.strip()
+            if 'out_time_ms=' in line:
+                try:
+                    out_ms = int(line.split('out_time_ms=')[1])
+                    out_s = out_ms / 1000000.0
+                    frac = min(1.0, max(0.0, out_s / seg_duration))
+                    segment_progress[progress_id]['progress'] = 50.0 + (frac * 50.0)
+                except Exception:
+                    pass
+
+        stdout, stderr = proc.communicate()
+        success = proc.returncode == 0
+
+        # Cleanup temp
+        try:
+            temp_file.unlink()
+        except Exception:
+            pass
+
+        if not success:
+            raise Exception("Failed to extract segment")
+
+        filesize = final_path.stat().st_size
+        segment_progress[progress_id]['status'] = 'completed'
+        segment_progress[progress_id]['progress'] = 100.0
+        segment_progress[progress_id]['message'] = 'Segment ready'
+        segment_progress[progress_id]['filename'] = final_path.name
+        segment_progress[progress_id]['download_url'] = f"/files/{final_path.name}"
+        segment_progress[progress_id]['filesize'] = filesize
+
+    except Exception as e:
+        segment_progress[progress_id]['status'] = 'error'
+        segment_progress[progress_id]['error'] = str(e)
+
+
+@app.post("/download-segment", response_model=DownloadSegmentStartResponse)
+async def download_segment(request: DownloadRequest, background_tasks: BackgroundTasks):
+    """Start a segment download and return a progress_id to poll."""
+    try:
+        url = str(request.url)
+        device_type = request.device_type or "unknown"
+        start_time = request.start_time
+        end_time = request.end_time
+        
+        if not is_valid_domain(url):
+            raise HTTPException(status_code=400, detail="Domain not allowed")
+        
+        # Validate segment parameters
+        if start_time is None or end_time is None:
+            raise HTTPException(status_code=400, detail="Start time and end time are required for segment download")
+        
+        if start_time < 0 or end_time <= start_time:
+            raise HTTPException(status_code=400, detail="Invalid segment time range")
+        
+        if end_time - start_time > 3600:  # Max 1 hour segment
+            raise HTTPException(status_code=400, detail="Segment too long (max 1 hour)")
+        
+        logger.info(f"Downloading segment for device type: {device_type}")
+        logger.info(f"Segment: {start_time}s to {end_time}s")
+        
+        # Generate unique filename and progress id
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        segment_suffix = f"_segment_{int(start_time)}_{int(end_time)}"
+        base_filename = f"download_{device_type}_{timestamp}{segment_suffix}"
+
+        progress_id = f"{base_filename}_{int(time.time())}"
+        segment_progress[progress_id] = {
+            'status': 'queued',
+            'progress': 0.0,
+            'message': 'Queued',
+            'filename': None,
+            'download_url': None,
+            'filesize': None,
+            'error': None,
+        }
+
+        # Kick off background worker
+        background_tasks.add_task(_perform_segment_download, progress_id, url, request, device_type, base_filename)
+
+        return DownloadSegmentStartResponse(progress_id=progress_id)
+        
+    except Exception as e:
+        logger.error(f"Segment download error: {e}")
+        raise HTTPException(status_code=500, detail=f"Segment download failed: {str(e)}")
+
+@app.get("/segment-progress/{progress_id}")
+async def get_segment_progress(progress_id: str):
+    """Get progress of a segment download"""
+    if progress_id not in segment_progress:
+        raise HTTPException(status_code=404, detail="Progress not found")
+    
+    return segment_progress[progress_id]
 
 @app.get("/health")
 async def health_check():
